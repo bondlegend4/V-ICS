@@ -1,2 +1,2 @@
-# Virtual-Municipal-Water-System
-A kupernetes container that is Virtual Municipal Water System based on the Flint, Michigan Municipal Water System.
+# Virtual-Municipal_Water_System
+A Kubernetes container is a virtual municipal water system based on the Flint, Michigan, municipal water system.
