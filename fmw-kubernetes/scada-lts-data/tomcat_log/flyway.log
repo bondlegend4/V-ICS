@@ -1,0 +1,11 @@
+INFO  2024-04-08T07:28:45,629 (?.:) - Initializing pooled connection manager 
+INFO  2024-04-08T07:28:45,662 (?.:) - Looking for Datasource: java:comp/env/jdbc/scadalts 
+INFO  2024-04-08T07:28:45,684 (?.:) - DataSource meta: MySQL 8.0.32 
+INFO  2024-04-08T07:28:50,752 (?.:) - schemaExist:true 
+INFO  2024-04-08T07:28:50,757 (?.:) - BaseLineNotExist:false 
+WARN  2024-04-08T07:28:50,771 (?.:) - Use of dots (.) as path separators will be deprecated in Flyway 7. Path: org.scada_lts.dao.migration.mysql 
+INFO  2024-04-08T07:28:50,781 (?.:) - Flyway Community Edition 6.5.5 by Redgate 
+INFO  2024-04-08T07:28:50,839 (?.:) - Database: jdbc:mysql://database:3306/scadalts (MySQL 8.0) 
+INFO  2024-04-08T07:28:50,924 (?.:) - Successfully validated 29 migrations (execution time 00:00.037s) 
+INFO  2024-04-08T07:28:50,940 (?.:) - Current version of schema `scadalts`: 2.7.6.1 
+INFO  2024-04-08T07:28:50,941 (?.:) - Schema `scadalts` is up to date. No migration necessary. 

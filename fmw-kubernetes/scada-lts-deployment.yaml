@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fmw-scada
+
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: db-data-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /scada-lts-data/db_data
+  persistentVolumeReclaimPolicy: Retain
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-conf
+  namespace: fmw-scada
+data:
+  # Add your MySQL configuration files here
+  my.cnf: |
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-root-pass
+  namespace: fmw-scada
+type: Opaque
+data:
+  password: cm9vdA== # base64 encoded value of 'root'
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: fmw-scada
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql/mysql-server:8.0.32
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-root-pass
+              key: password
+        - name: MYSQL_USER
+          value: root
+        - name: MYSQL_PASSWORD
+          value: root
+        - name: MYSQL_DATABASE
+          value: scada-lts
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /etc/mysql
+          readOnly: true
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: db-data-pv
+      - name: mysql-config
+        configMap:
+          name: db-conf
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: fmw-scada
+spec:
+  ports:
+  - protocol: TCP
+    port: 3306
+    targetPort: 3306
+  selector:
+    app: mysql
+  type: LoadBalancer
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scada-lts
+  namespace: fmw-scada
+spec:
+  selector:
+    matchLabels:
+      app: scada-lts
+  template:
+    metadata:
+      labels:
+        app: scada-lts
+    spec:
+      containers:
+      - name: scada-lts
+        image: scadalts/scadalts:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: CATALINA_OPTS
+          value: "-Xmx512m -Xms512m"
+        volumeMounts:
+        - name: tomcat-log
+          mountPath: /usr/local/tomcat/logs
+      volumes:
+      - name: tomcat-log
+        hostPath:
+          path: /scada-lts-data/tomcat_log
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: scada-lts
+  namespace: fmw-scada
+spec:
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  selector:
+    app: scada-lts
+  type: LoadBalancer
