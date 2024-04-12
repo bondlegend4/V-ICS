@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.32.0 (HEAD)
+  labels:
+    io.kompose.service: scadalts
+  name: scadalts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: scadalts
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.32.0 (HEAD)
+      labels:
+        io.kompose.network/scada-lts-data-default: "true"
+        io.kompose.service: scadalts
+    spec:
+      containers:
+        - args:
+            - /usr/bin/wait-for-it
+            - --host=database
+            - --port=3306
+            - --timeout=30
+            - --strict
+            - --
+            - /usr/local/tomcat/bin/catalina.sh
+            - run
+          env:
+            - name: CATALINA_OPTS
+              value: -Xmx512m -Xms512m
+          image: scadalts/scadalts:latest
+          name: scadalts
+          ports:
+            - containerPort: 8080
+              hostPort: 8080
+              protocol: TCP
+            - containerPort: 8000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /usr/local/tomcat/logs
+              name: scadalts-claim0
+      restartPolicy: Always
+      volumes:
+        - name: scadalts-claim0
+          persistentVolumeClaim:
+            claimName: scadalts-claim0
