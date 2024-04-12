@@ -9,14 +9,12 @@ metadata:
   name: scadalts
 spec:
   ports:
-    - name: "8080"
+    - name: "web"
       port: 8080
       targetPort: 8080
-    - name: 8080-tcp
-      port: 8080
-      targetPort: 8080
-    - name: "8000"
+    - name: "debug"
       port: 8000
       targetPort: 8000
+
   selector:
     io.kompose.service: scadalts
