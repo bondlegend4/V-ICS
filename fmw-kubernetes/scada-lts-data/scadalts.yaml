@@ -1,27 +1,25 @@
+#scadalts-deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.32.0 (HEAD)
+  name: scadalts-deployment
+  namespace: v-ics
   labels:
-    io.kompose.service: scadalts
-  name: scadalts
+    app: scadalts
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: scadalts
+      app: scadalts
   strategy:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose convert
-        kompose.version: 1.32.0 (HEAD)
       labels:
-        io.kompose.network/scada-lts-data-default: "true"
-        io.kompose.service: scadalts
+        app: scadalts
     spec:
       containers:
         - args:
@@ -35,13 +33,22 @@ spec:
             - run
           env:
             - name: CATALINA_OPTS
-              value: -Xmx512m -Xms512m
+              value: "-Xmx512m -Xms512m"
+            - name: MYSQL_USER
+              value: scadalts
+            - name: MYSQL_PASSWORD
+              valueFrom: 
+                secretKeyRef: 
+                  name: mysql-secret
+                  key: user-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom: 
+                secretKeyRef: 
+                  name: mysql-secret
+                  key: root-password
           image: scadalts/scadalts:latest
           name: scadalts
           ports:
-            - containerPort: 8080
-              hostPort: 8080
-              protocol: TCP
             - containerPort: 8000
               protocol: TCP
           volumeMounts:
@@ -52,3 +59,24 @@ spec:
         - name: scadalts-claim0
           persistentVolumeClaim:
             claimName: scadalts-claim0
+---
+#scadalts-service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: scadalts
+  name: scadalts-service
+  namespace: v-ics
+spec:
+  type: NodePort
+  ports:
+    - name: "web"
+      port: 8080
+      targetPort: 8080
+    - name: "debug"
+      port: 8000
+      targetPort: 8000
+      nodePort: 30000
+  selector:
+    app: scadalts

@@ -1,0 +1,77 @@
+#database-deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.32.0 (HEAD)
+  name: database-deployment
+  namespace: v-ics
+  labels:
+    app: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: database
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: database
+    spec:
+      containers:
+        - name: mysql
+          image: mysql/mysql-server:8.0.32
+          args:
+            - --log_bin_trust_function_creators=1
+          ports:
+            - containerPort: 3306
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-data
+            - mountPath: /etc/mysql
+              name: mysql-config
+              readOnly: true
+          env:
+            - name: MYSQL_USER
+              value: scadalts
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: user-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: root-password
+            - name: DB_HOST
+              value: database-service
+      restartPolicy: Always
+      volumes:
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: mysql-data-pvc
+        - name: mysql-config
+          persistentVolumeClaim:
+            claimName: mysql-config-pvc
+---
+#database-service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: database
+  name: database-service
+  namespace: v-ics
+spec:
+  ports:
+    - name: "mysql"
+      port: 3306
+      targetPort: 3306
+      protocol: TCP
+  selector:
+    app: database

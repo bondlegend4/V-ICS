@@ -1,16 +1,28 @@
 #!/bin/bash
 
 # Configuration
-NAMESPACE=fmw-scada
-SCADA_LTS_DEPLOYMENT="scada-lts-deployment.yaml"
+NAMESPACE=v-ics
+BASE_DIR="./scada-lts-data"
+DATABASE="$BASE_DIR/database.yaml"
+DATABASE_CLAIM="$BASE_DIR/database-pvc.yaml"
+DATABASE_CONFIG="$BASE_DIR/database-config.yaml"
+DATABASE_SECRET="$BASE_DIR/database-secret.yaml"
+SCADALTS="$BASE_DIR/scadalts.yaml"
+SCADALTS_CLAIM="$BASE_DIR/scadalts-pvc.yaml"
 OPENPLC_IMAGE="openplc:v3"
 START_PORT=8081
+START_NODE_PORT=30001
 
 # Function to check if SCADA-LTS is already deployed
 deploy_scada_lts() {
   if ! kubectl get deployment/scada-lts -n $NAMESPACE &> /dev/null; then
     echo "Deploying SCADA-LTS..."
-    kubectl apply -f $SCADA_LTS_DEPLOYMENT
+      kubectl apply -f $DATABASE_CLAIM
+      kubectl apply -f $DATABASE_CONFIG
+      kubectl apply -f $DATABASE_SECRET
+      kubectl apply -f $DATABASE
+      kubectl apply -f $SCADALTS_CLAIM
+      kubectl apply -f $SCADALTS
   else
     echo "SCADA-LTS is already deployed."
   fi
@@ -20,6 +32,7 @@ deploy_scada_lts() {
 deploy_openplc_instances() {
   local instances=$1
   local current_port=$START_PORT
+  local current_node_port=$START_NODE_PORT
 
   for i in $(seq 1 $instances); do
     local name="openplc-instance$i"
@@ -55,16 +68,19 @@ metadata:
   name: $name
   namespace: $NAMESPACE
 spec:
+  type: NodePort
   selector:
     app: $name
   ports:
     - protocol: TCP
       port: $current_port
       targetPort: 8080
+      nodePort: $current_node_port
   type: LoadBalancer
 EOF
 
     ((current_port++))
+    ((current_node_port++))
   done
 }
 

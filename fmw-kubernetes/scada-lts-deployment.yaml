@@ -1,115 +1,140 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-config
+data:
+  database-url: database-service
+
+---
+
+#database-claim0-persistentvolumeclaim
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  labels:
-    io.kompose.service: database-claim0
-  name: database-claim0
+  name: mysql-data-pvc
+  namespace: v-ics
 spec:
   accessModes:
     - ReadWriteOnce
   resources:
     requests:
       storage: 100Mi
+  hostPath:
+    path: "./db_data"
 
---- 
-
+---
+#database-claim1-persistentvolumeclaim
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  labels:
-    io.kompose.service: database-claim1
-  name: database-claim1
+  name: mysql-conf-pvc
+  namespace: v-ics
 spec:
   accessModes:
     - ReadOnlyMany
   resources:
     requests:
       storage: 100Mi
+  hostPath:
+    path: "./db_conf"
 
 ---
 
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: v-ics
+type: Opaque
+data:
+  root-password: cm9vdA==  # base64 encoded value of 'root'
+  user-password: cm9vdA==  # base64 encoded value of 'root'
+
+---
+
+#database-deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.32.0 (HEAD)
+  name: database-deployment
+  namespace: v-ics
   labels:
-    io.kompose.service: database
-  name: database
-  namespace: fmw-scada
+    app: database
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: database
+      app: database
   strategy:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose convert
-        kompose.version: 1.32.0 (HEAD)
       labels:
-        io.kompose.network/scada-lts-data-default: "true"
-        io.kompose.service: database
+        app: database
     spec:
       containers:
-        - args:
-            - --log_bin_trust_function_creators=1
-          env:
-            - name: MYSQL_DATABASE
-              value: scadalts
-            - name: MYSQL_PASSWORD
-              value: root
-            - name: MYSQL_ROOT_PASSWORD
-              value: root
-            - name: MYSQL_USER
-              value: root
+        - name: mysql
           image: mysql/mysql-server:8.0.32
-          name: mysql
+          args:
+            - --log_bin_trust_function_creators=1
           ports:
             - containerPort: 3306
-              hostPort: 3306
               protocol: TCP
           volumeMounts:
             - mountPath: /var/lib/mysql
-              name: database-claim0
+              name: mysql-data
             - mountPath: /etc/mysql
-              name: database-claim1
+              name: mysql-config
               readOnly: true
+          env:
+            - name: MYSQL_USER
+              value: scadalts
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: user-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: root-password
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: database-config
+                  key: database-service
       restartPolicy: Always
       volumes:
-        - name: database-claim0
+        - name: mysql-data
           persistentVolumeClaim:
-            claimName: database-claim0
-        - name: database-claim1
+            claimName: mysql-data-pvc
+        - name: mysql-config
           persistentVolumeClaim:
-            claimName: database-claim1
-            readOnly: true
-
+            claimName: mysql-config-pvc
 ---
-
+#database-service
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
-    kompose.cmd: kompose convert
-    kompose.version: 1.32.0 (HEAD)
   labels:
-    io.kompose.service: database
-  name: database
-  namespace: fmw-scada
+    app: database
+  name: database-service
 spec:
   ports:
     - name: "mysql"
       port: 3306
       targetPort: 3306
+      protocol: TCP
   selector:
-    io.kompose.service: database
+    app: database
 
 ---
 
+# scadalts-claim0-persistentvolumeclaim
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -125,31 +150,27 @@ spec:
 
 ---
 
+#scadalts-deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.32.0 (HEAD)
+  name: scadalts-deployment
   labels:
-    io.kompose.service: scadalts
-  name: scadalts
-  namespace: fmw-scada
+    app: scadalts
 spec:
   replicas: 1
   selector:
     matchLabels:
-      io.kompose.service: scadalts
+      app: scadalts
   strategy:
     type: Recreate
   template:
     metadata:
-      annotations:
-        kompose.cmd: kompose convert
-        kompose.version: 1.32.0 (HEAD)
       labels:
-        io.kompose.network/scada-lts-data-default: "true"
-        io.kompose.service: scadalts
+        app: scadalts
     spec:
       containers:
         - args:
@@ -163,13 +184,24 @@ spec:
             - run
           env:
             - name: CATALINA_OPTS
-              value: -Xmx512m -Xms512m
+              value: "-Xmx512m -Xms512m"
+            - name: MYSQL_USER
+              value: scadalts
+            - name: MYSQL_PASSWORD
+              valueFrom: 
+                secretKeyRef: 
+                  name: mysql-secret
+                  key: user-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom: 
+                secretKeyRef: 
+                  name: mysql-secret
+                  key: root-password
+            - name: DB_HOST
+              value: database-service
           image: scadalts/scadalts:latest
           name: scadalts
           ports:
-            - containerPort: 8080
-              hostPort: 8080
-              protocol: TCP
             - containerPort: 8000
               protocol: TCP
           volumeMounts:
@@ -180,20 +212,16 @@ spec:
         - name: scadalts-claim0
           persistentVolumeClaim:
             claimName: scadalts-claim0
-
 ---
-
+#scadalts-service
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
-    kompose.cmd: kompose convert
-    kompose.version: 1.32.0 (HEAD)
   labels:
-    io.kompose.service: scadalts
-  name: scadalts
-  namespace: fmw-scada
+    app: scadalts
+  name: scadalts-service
 spec:
+  type: NodePort
   ports:
     - name: "web"
       port: 8080
@@ -201,5 +229,6 @@ spec:
     - name: "debug"
       port: 8000
       targetPort: 8000
+      nodePort: 30000
   selector:
-    io.kompose.service: scadalts
+    app: scadalts

@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hivemq-deployment
+  namespace: v-ics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hivemq
+  template:
+    metadata:
+      labels:
+        app: hivemq
+    spec:
+      containers:
+      - name: hivemq
+        image: hivemq/hivemq4:latest
+        ports:
+        - containerPort: 8080
+        - containerPort: 1883
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hivemq-service
+  namespace: v-ics
+spec:
+  selector:
+    app: hivemq
+  ports:
+    - name: web
+      protocol: TCP
+      port: 8081
+      targetPort: 8080
+    - name: mqtt
+      protocol: TCP
+      port: 1883
+      targetPort: 1883
