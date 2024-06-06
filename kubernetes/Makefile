@@ -1,15 +1,16 @@
 # Configuration
 NAMESPACE = v-ics
-BASE_DIR = ./scada-lts
+SCADALTS_DIR = ./scada-lts
+OPENPLC_DIR = ./openplc
 
 # Kubernetes manifests
-DATABASE = $(BASE_DIR)/database.yaml
-DATABASE_CLAIM = $(BASE_DIR)/database-pvc.yaml
-DATABASE_CONFIG = $(BASE_DIR)/database-config.yaml
-DATABASE_SECRET = $(BASE_DIR)/database-secret.yaml
-SCADALTS = $(BASE_DIR)/scadalts.yaml
-SCADALTS_CLAIM = $(BASE_DIR)/scadalts-pvc.yaml
-OPENPLC_YAML = $(BASE_DIR)/openplc.yaml  # New file for OpenPLC template
+DATABASE = $(SCADALTS_DIR)/database.yaml
+DATABASE_CLAIM = $(SCADALTS_DIR)/database-pvc.yaml
+DATABASE_CONFIG = $(SCADALTS_DIR)/database-config.yaml
+DATABASE_SECRET = $(SCADALTS_DIR)/database-secret.yaml
+SCADALTS = $(SCADALTS_DIR)/scadalts.yaml
+SCADALTS_CLAIM = $(SCADALTS_DIR)/scadalts-pvc.yaml
+OPENPLC_YAML = $(OPENPLC_DIR)/openplc.yaml  # New file for OpenPLC template
 
 .PHONY: all deploy-scada-lts deploy-openplc clean
 
