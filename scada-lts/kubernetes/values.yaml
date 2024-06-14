@@ -1,0 +1,20 @@
+# Default values for SCADA-LTS
+scadalts:
+  image: scadalts/scadalts:latest  # Adjust image tag
+  service:
+    type: NodePort
+    port: 8080
+  persistence:
+    enabled: false  # Enable if you need PVC for SCADA-LTS data
+
+# Default values for MySQL
+database:
+  image: mysql:8.0  # Adjust image tag
+  rootPassword: changeme  # IMPORTANT: Change this in production!
+  user: scadalts
+  password: changeme  # IMPORTANT: Change this in production!
+  database: scadalts
+  persistence:
+    enabled: true
+    storageClass: "-"  # Set the appropriate storage class or leave empty for the default
+    size: 1Gi

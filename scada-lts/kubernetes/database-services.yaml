@@ -1,0 +1,16 @@
+#database-service
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: database
+  name: database-service
+  namespace: v-ics
+spec:
+  ports:
+    - name: "mysql"
+      port: 3306
+      targetPort: 3306
+      protocol: TCP
+  selector:
+    app: database

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.instanceName }}
+  labels:
+    app: openplc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openplc
+  template:
+    metadata:
+      labels:
+        app: openplc
+    spec:
+      containers:
+        - name: openplc
+          image: {{ .Values.image }}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OPENPLC_CONFIG_FILE
+              value: {{ .Values.configFile }}
+          volumeMounts: 
+            - name: openplc-config
+              mountPath: /etc/openplc
+      volumes:
+        - name: openplc-config
+          configMap:
+            name: {{ .Values.instanceName }}-config 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Values.instanceName }}
+  labels:
+    app: openplc
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: openplc
+  template:
+    metadata:
+      labels:
+        app: openplc
+    spec:
+      containers:
+        - name: openplc
+          image: {{ .Values.image }}
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-{{ .Values.instanceName }}-config

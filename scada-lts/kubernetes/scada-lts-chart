@@ -1,0 +1,10 @@
+scadalts-chart/
+├── Chart.yaml
+├── templates/
+│   ├── _helpers.tpl
+│   ├── database-deployment.yaml
+│   ├── database-service.yaml
+│   ├── database-pvc.yaml
+│   ├── scadalts-deployment.yaml
+│   └── scadalts-service.yaml
+└── values.yaml
