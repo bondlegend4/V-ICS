@@ -3,7 +3,7 @@ A Kubernetes container is a virtual industrial control system.
 
 It can be configured to represent a municipal water system based on the Flint, Michigan, municipal water system.
 
-Code released under [the GPL license]().
+Code released under [the MIT license](https://github.com/bondlegend4/V-ICS/blob/main/LICENSE).
 
 
 ![GitHub release (latest by date)]()
@@ -24,7 +24,7 @@ We follow the [Semantic Versioning Guidelines](http://semver.org/) to organize c
 If you need support for deployment please contact us and find more information on [our website]()
 
 ## Issues and ideas
-Have you found a bug? Do you have idea for a new feature? Open a new [Issue]() on our GitHub project site!
+Have you found a bug? Do you have idea for a new feature? Open a new [Issue](https://github.com/bondlegend4/V-ICS/issues) on our GitHub project site!
 Please follow the [issue guidelines]()
 and make sure that your issue is not already reported. Try to write in english and explain what you think in a clear and understandable way.
 
