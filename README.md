@@ -15,7 +15,7 @@ Code released under [the MIT license](https://github.com/bondlegend4/V-ICS/blob/
 ---
 
 <h1><img src=https://github.githubassets.com/images/modules/logos_page/GitHub-Logo.png height="20px" /> Project Documentation</a></h1> 
-
+See our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) page to take the first steps inside V-ICS project. 
 More about the project.
 
 Follow the [Release Section]() to be up to date with the latest features and see the specific version changelogs.   
@@ -41,5 +41,4 @@ We recommend using them;
 # Development
 
 ## Building the application
-
-[To be written]
+To build the application on your own environment you can use Kubeclt. If you want to start the development of V-ICS find quick-start tutorial on our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) page.
