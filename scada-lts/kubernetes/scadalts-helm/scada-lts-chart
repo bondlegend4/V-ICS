@@ -1,4 +1,4 @@
-scadalts-chart/
+scadalts-helm/
 ├── Chart.yaml
 ├── templates/
 │   ├── _helpers.tpl

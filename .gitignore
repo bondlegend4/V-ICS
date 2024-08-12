@@ -1,0 +1,8 @@
+# Ignore the 'test' file
+test
+
+# Ignore macOS-specific files
+.DS_Store
+
+# Ignore Helm ignore file (optional)
+.helmignore

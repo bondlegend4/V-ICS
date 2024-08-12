@@ -39,6 +39,7 @@ We recommend using them;
 ---
 
 # Development
+To understand the relationship between https://helm.sh/docs/intro/using_helm/#creating-your-own-charts
 
 ## Building the application
 To build the application on your own environment you can use Kubeclt. If you want to start the development of V-ICS find quick-start tutorial on our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) page.

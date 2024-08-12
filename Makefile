@@ -14,18 +14,29 @@ OPENPLC_YAML = $(PLC_KUBE_DIR)/openplc.yaml
 COMBINED_YAML = ./scada-lts-development.yaml
 
 # Helm charts
-SCADA_LTS_CHART = .$(SCADA_KUBE_DIR)/scadalts-chart
-OPENPLC_CHART = $(PLC_KUBE_DIR)/openplc-chart
+SCADA_LTS_CHART = $(SCADA_KUBE_DIR)/Chart.yaml
+OPENPLC_CHART = $(PLC_KUBE_DIR)/Chart.yaml
 
-.PHONY: all deploy-scada-lts deploy-openplc clean combine
+# Check for Helm and install if not found
+check-helm:
+	@if ! [ -x "$$(command -v helm)" ]; then \
+		echo "Helm not found. Installing..."; \
+		curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; \
+		export PATH=$$PATH:/usr/local/bin/helm; \
+		echo "Helm installed."; \
+	else \
+		echo "Helm is already installed."; \
+	fi
 
-all: deploy-scada-lts deploy-openplc
+.PHONY: all deploy-scada-lts deploy-openplc clean combine check-helm package-scada-lts-chart
 
-deploy-scada-lts:
+all: check-helm package-scada-lts-chart deploy-scada-lts deploy-openplc
+
+deploy-scada-lts: check-helm package-scada-lts-chart
 	@kubectl create namespace $(NAMESPACE) || true
-	@helm upgrade --install scadalts $(SCADA_LTS_CHART) -n $(NAMESPACE)
+	@helm install scadalts $(SCADA_LTS_CHART) -n $(NAMESPACE)
 
-deploy-openplc: 
+deploy-openplc: check-helm
 	@echo "Deploying OpenPLC instances..."
 	@for i in $(shell seq 1 $(NUM_INSTANCES)); do \
 		instance_name="openplc-instance$$i"; \
