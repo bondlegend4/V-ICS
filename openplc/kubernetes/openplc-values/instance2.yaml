@@ -1,4 +1,0 @@
-instanceName: instance2
-service:
-  nodePort: 30002  # Adjust for each instance
-# Add other instance-specific configurations here

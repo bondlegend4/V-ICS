@@ -1,7 +1,0 @@
-# Default values for a single OpenPLC instance
-image: openplc:v3
-service:
-  type: NodePort  # Or LoadBalancer, depending on your needs
-  port: 8080
-  nodePort: 30000 # Adjust if using NodePort
-replicaCount: 1

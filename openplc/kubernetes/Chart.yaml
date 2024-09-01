@@ -1,6 +1,0 @@
-apiVersion: v2
-name: openplc
-description: A Helm chart for deploying multiple OpenPLC instances
-type: application
-version: 0.1.0
-appVersion: "latest" # Adjust for your OpenPLC version

@@ -1,6 +1,0 @@
-apiVersion: v2
-name: scadalts
-description: A Helm chart for deploying SCADA-LTS with MySQL
-type: application
-version: 0.1.0
-appVersion: "latest"  # Adjust for your SCADA-LTS version
