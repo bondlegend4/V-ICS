@@ -11,6 +11,3 @@ test
 db_conf
 db_data
 tomcat_log
-
-# Ignoring OpenPLC while i figure out how to properly incorporate it
-openplc
