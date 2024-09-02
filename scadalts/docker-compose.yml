@@ -2,7 +2,6 @@
 # Use MySQL server 8 and latest Scada-LTS local build.
 # Using attached webapps folder as developer you will be able to modify the static content from host os.
 # Attach shell to stop the tomcat instance and then you will be able to run in JPDA mode.
-version: '3'
 networks:
   ics:
     driver: bridge
