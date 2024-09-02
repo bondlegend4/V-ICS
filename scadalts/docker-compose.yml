@@ -3,6 +3,9 @@
 # Using attached webapps folder as developer you will be able to modify the static content from host os.
 # Attach shell to stop the tomcat instance and then you will be able to run in JPDA mode.
 version: '3'
+networks:
+  ics:
+    driver: bridge
 services: 
     database:
         container_name: mysql
@@ -19,6 +22,8 @@ services:
             - ./db_data:/var/lib/mysql:rw
             - ./db_conf:/etc/mysql:ro
         command: --log_bin_trust_function_creators=1
+        networks:
+            - ics
     scadalts:
         image: scadalts/scadalts:latest
         environment:
@@ -41,9 +46,21 @@ services:
             - --
             - /usr/local/tomcat/bin/catalina.sh
             - run
+        networks:
+            - ics
     mqtt:
         image: hivemq/hivemq4:latest
         ports:
             - "8081:8080"
             - "1883:1883"
         expose: [ "8081", "1883" ]
+    openplc:
+        image: sflorenz05/open-plc:v0.1
+        depends_on:
+            - scadalts
+        ports:
+            - "502:502"
+            - "8082:8080"
+        command: -privileged
+        networks:
+            - ics
