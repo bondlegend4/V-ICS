@@ -11,3 +11,11 @@ test
 db_conf
 db_data
 tomcat_log
+
+#python 
+bin
+include
+lib
+pyvenv.cfg
+
+build
