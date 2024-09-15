@@ -1,91 +1,64 @@
-import time
-import matplotlib.pyplot as plt
 from pymodbus.client.sync import ModbusTcpClient
-from collections import deque
+import time
 
-# Modbus connection details
-PLC_HOST = "localhost"  # Modbus server host (localhost if running locally)
-PLC_PORT = 5020         # Modbus server port
+# Modbus client setup to connect to the PLC (assuming same IP and port)
+client = ModbusTcpClient('127.0.0.1')  # Replace with PLC IP if different
 
-# Create a Modbus client instance
-client = ModbusTcpClient(PLC_HOST, PLC_PORT)
+# Define the address mapping based on Modbus register addresses (same as simulation)
+MODBUS_REGISTERS = {
+    'SoilMoisture': 0,
+    'Temperature': 1,
+    'Humidity': 2,
+    'WaterFlow': 3,
+    'Pressure': 4
+}
 
-# Number of data points to display in the graph at once
-BUFFER_SIZE = 50
+MODBUS_COILS = {
+    'PumpControl': 0,
+    'ValveControl': 1
+}
 
-# Queues to store real-time data for each sensor
-soil_moisture_data = deque([0]*BUFFER_SIZE, maxlen=BUFFER_SIZE)
-temperature_data = deque([0]*BUFFER_SIZE, maxlen=BUFFER_SIZE)
-pressure_data = deque([0]*BUFFER_SIZE, maxlen=BUFFER_SIZE)
-water_flow_data = deque([0]*BUFFER_SIZE, maxlen=BUFFER_SIZE)
-
-# Initialize the plot
-plt.ion()  # Interactive mode on
-fig, axs = plt.subplots(2, 2, figsize=(10, 8))
-
-def update_plot():
-    # Clear the previous plots
-    for ax in axs.flat:
-        ax.clear()
-
-    # Plot soil moisture
-    axs[0, 0].plot(soil_moisture_data, label="Soil Moisture", color='blue')
-    axs[0, 0].set_title('Soil Moisture')
-    axs[0, 0].set_ylim([200, 900])
-
-    # Plot temperature
-    axs[0, 1].plot(temperature_data, label="Temperature", color='red')
-    axs[0, 1].set_title('Temperature (Celsius)')
-    axs[0, 1].set_ylim([10, 45])
-
-    # Plot pressure
-    axs[1, 0].plot(pressure_data, label="Pressure", color='green')
-    axs[1, 0].set_title('Pressure (psi)')
-    axs[1, 0].set_ylim([30, 160])
-
-    # Plot water flow
-    axs[1, 1].plot(water_flow_data, label="Water Flow", color='orange')
-    axs[1, 1].set_title('Water Flow (Liters/hour)')
-    axs[1, 1].set_ylim([400, 1100])
-
-    # Update the plots
-    for ax in axs.flat:
-        ax.legend()
-        ax.grid(True)
-
-    # Draw the updated plots
-    plt.draw()
-    plt.pause(0.01)  # Small pause to allow for real-time updating
-
-def read_modbus_traffic():
-    while True:
-        # Read sensor values from Modbus server
-        soil_moisture = client.read_holding_registers(0, 1).registers[0]  # Soil Moisture (register 0)
-        temperature = client.read_holding_registers(1, 1).registers[0]    # Temperature (register 1)
-        pressure = client.read_holding_registers(4, 1).registers[0]       # Pressure (register 4)
-        water_flow = client.read_holding_registers(3, 1).registers[0]     # Water Flow (register 3)
-
-        # Append the values to the respective data queues
-        soil_moisture_data.append(soil_moisture)
-        temperature_data.append(temperature)
-        pressure_data.append(pressure)
-        water_flow_data.append(water_flow)
-
-        # Print the received values in the terminal for reference
-        print(f"Soil Moisture: {soil_moisture}, Temperature: {temperature}, Pressure: {pressure}, Water Flow: {water_flow}")
-
-        # Update the plot with new data
-        update_plot()
-
-        # Wait before reading the next set of values (adjust time as needed)
-        time.sleep(1)
-
-if __name__ == "__main__":
+# Function to read and test Modbus data
+def test_modbus_system():
     try:
-        # Start reading Modbus traffic and plotting
-        read_modbus_traffic()
-    except KeyboardInterrupt:
-        print("Modbus client stopped.")
+        # Loop to continuously test Modbus outputs
+        while True:
+            # Read sensor values from the Modbus registers
+            soil_moisture = client.read_holding_registers(MODBUS_REGISTERS['SoilMoisture'], 1).registers[0]
+            temperature = client.read_holding_registers(MODBUS_REGISTERS['Temperature'], 1).registers[0]
+            humidity = client.read_holding_registers(MODBUS_REGISTERS['Humidity'], 1).registers[0]
+            water_flow = client.read_holding_registers(MODBUS_REGISTERS['WaterFlow'], 1).registers[0]
+            pressure = client.read_holding_registers(MODBUS_REGISTERS['Pressure'], 1).registers[0]
+            
+            # Read coil states for pump and valve control
+            modbus_output = client.read_coils(MODBUS_COILS['PumpControl'], 2)
+            pump_control = modbus_output.bits[0]
+            valve_control = modbus_output.bits[1]
+            
+            # Print the Modbus register and coil values
+            print(f"Sensor Data -> Soil Moisture: {soil_moisture}, Temperature: {temperature}, Humidity: {humidity}, Water Flow: {water_flow}, Pressure: {pressure}")
+            print(f"Actuator Control -> Pump: {'ON' if pump_control else 'OFF'}, Valve: {'OPEN' if valve_control else 'CLOSED'}")
+            
+            # Check if the values are within expected ranges
+            assert 200 <= soil_moisture <= 800, "Soil Moisture out of range!"
+            assert 1500 <= temperature <= 3000, "Temperature out of range!"
+            assert 4000 <= humidity <= 8000, "Humidity out of range!"
+            assert 10 <= water_flow <= 100, "Water Flow out of range!"
+            assert 50 <= pressure <= 150, "Pressure out of range!"
+            
+            # Print confirmation
+            print("All values are within the expected range.\n")
+            
+            # Wait before next check (adjust as necessary)
+            time.sleep(1)
+
+    except AssertionError as e:
+        print(f"Test failed: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
     finally:
-        # Close the Modbus client connection when done
         client.close()
+
+# Run the Modbus test
+if __name__ == "__main__":
+    test_modbus_system()

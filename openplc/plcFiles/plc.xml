@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <project xmlns="http://www.plcopen.org/xml/tc6_0201" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:ns1="http://www.plcopen.org/xml/tc6_0201">
   <fileHeader companyName="Unknown" productName="Unnamed" productVersion="1" creationDateTime="2024-09-03T16:04:08"/>
-  <contentHeader name="Unnamed" modificationDateTime="2024-09-10T11:48:46">
+  <contentHeader name="Unnamed" modificationDateTime="2024-09-14T19:38:14">
     <coordinateInfo>
       <fbd>
         <scaling x="10" y="10"/>
@@ -551,21 +551,7 @@
         </interface>
         <body>
           <ST>
-            <xhtml:p><![CDATA[// Structured Text code to control irrigation system
-
-// Set the threshold values
-VAR
-    SoilMoistureThreshold : INT := 500;  // Moisture threshold for irrigation
-    TempMin : INT := 20;                 // Minimum acceptable temperature
-    TempMax : INT := 35;                 // Maximum acceptable temperature
-    PressureMin : INT := 60;             // Minimum acceptable pressure
-    PressureMax : INT := 140;            // Maximum acceptable pressure
-    FlowMin : INT := 600;                // Minimum acceptable water flow
-    FlowMax : INT := 950;                // Maximum acceptable water flow
-END_VAR
-
-// Main control logic
-IF (SoilMoisture < SoilMoistureThreshold) THEN
+            <xhtml:p><![CDATA[IF (SoilMoisture < SoilMoistureThreshold) THEN
     IF (Temperature > TempMin) AND (Temperature < TempMax) THEN
         IF (Pressure > PressureMin) AND (Pressure < PressureMax) THEN
             IF (WaterFlow > FlowMin) AND (WaterFlow < FlowMax) THEN
@@ -573,22 +559,18 @@ IF (SoilMoisture < SoilMoistureThreshold) THEN
                 PumpControl := TRUE;
                 ValveControl := TRUE;
             ELSE
-                // Water flow not in range, turn off the pump and valve
                 PumpControl := FALSE;
                 ValveControl := FALSE;
             END_IF;
         ELSE
-            // Pressure not in range, turn off the pump and valve
             PumpControl := FALSE;
             ValveControl := FALSE;
         END_IF;
     ELSE
-        // Temperature not in range, turn off the pump and valve
         PumpControl := FALSE;
         ValveControl := FALSE;
     END_IF;
 ELSE
-    // Soil moisture is sufficient, turn off the pump and valve
     PumpControl := FALSE;
     ValveControl := FALSE;
 END_IF;
