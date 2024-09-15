@@ -1,12 +1,7 @@
 import time
-import random
 import matplotlib.pyplot as plt
-from pymodbus.client.sync import ModbusTcpClient
-
-# PLC Modbus connection setup
-PLC_HOST = "localhost"
-PLC_PORT = 5020
-client = ModbusTcpClient(PLC_HOST, PLC_PORT)
+from modbus_io import ModbusIO
+from irrigation_simulator import IrrigationSimulation
 
 # Simulated Sensor Values
 soil_moisture_values = []
@@ -18,20 +13,28 @@ flow_values = []
 pump_states = []
 valve_states = []
 
+# ModbusIO setup
+modbus_io = ModbusIO('127.0.0.1', 502)
+simulator = IrrigationSimulation()
+
 # Simulate and test data
 def generate_and_test_plc():
+    if not modbus_io.connect():
+        print("Failed to connect to Modbus server")
+        return
+
     for i in range(20):  # Simulate 20 data points
-        # Generate random values for the sensors
-        soil_moisture = random.randint(300, 800)
-        temperature = random.randint(15, 40)
-        pressure = random.randint(50, 150)
-        water_flow = random.randint(500, 1000)
+        # Generate random values for the sensors using the simulator
+        soil_moisture = simulator.simulate_soil_moisture()
+        temperature = simulator.simulate_temperature()
+        pressure = simulator.simulate_pressure()
+        water_flow = simulator.simulate_water_flow()
 
         # Send values to PLC via Modbus registers
-        client.write_register(0, soil_moisture)  # Soil Moisture in Register 0
-        client.write_register(1, temperature)    # Temperature in Register 1
-        client.write_register(2, pressure)       # Pressure in Register 2
-        client.write_register(3, water_flow)     # Water Flow in Register 3
+        modbus_io.IR_plc(0, 1, [soil_moisture])  # Soil Moisture in Register 0
+        modbus_io.IR_plc(1, 1, [temperature])    # Temperature in Register 1
+        modbus_io.IR_plc(2, 1, [pressure])       # Pressure in Register 2
+        modbus_io.IR_plc(3, 1, [water_flow])     # Water Flow in Register 3
 
         # Store sensor values for plotting
         soil_moisture_values.append(soil_moisture)
@@ -42,21 +45,21 @@ def generate_and_test_plc():
         # Wait for PLC to process and read output (Pump and Valve states)
         time.sleep(1)  # Give PLC time to process
 
-        # Read pump and valve states from Modbus registers
-        pump_control = client.read_coils(0, 1).bits[0]  # Pump Control at Coil 0
-        valve_control = client.read_coils(1, 1).bits[0]  # Valve Control at Coil 1
+        # Read pump and valve states from Modbus coils
+        pump_control = modbus_io.QX_plc(0, 1, [0])  # Pump Control at Coil 0
+        valve_control = modbus_io.QX_plc(1, 1, [0])  # Valve Control at Coil 1
 
         # Store PLC outputs for plotting
         pump_states.append(pump_control)
         valve_states.append(valve_control)
 
-        # Print the test results in the kernel
+        # Print the test results in the terminal
         print(f"Test {i+1}: Soil Moisture: {soil_moisture}, Temperature: {temperature}, Pressure: {pressure}, Flow: {water_flow}")
         print(f"Pump State: {'ON' if pump_control else 'OFF'}, Valve State: {'ON' if valve_control else 'OFF'}")
         print("-" * 50)
 
     # Close Modbus client
-    client.close()
+    modbus_io.close()
 
 # Function to plot results
 def plot_results():

@@ -18,11 +18,11 @@ try:
             pressure = simulator.simulate_pressure()
 
             # Write sensor values to Modbus registers
-            modbus_io.write_input_register(0, [soil_moisture])
-            modbus_io.write_input_register(1, [temperature])
-            modbus_io.write_input_register(2, [humidity])
-            modbus_io.write_input_register(3, [water_flow])
-            modbus_io.write_input_register(4, [pressure])
+            modbus_io.IR_plc(0, 1, [soil_moisture])
+            modbus_io.IR_plc(1, 1, [temperature])
+            modbus_io.IR_plc(2, 1, [humidity])
+            modbus_io.IR_plc(3, 1, [water_flow])
+            modbus_io.IR_plc(4, 1, [pressure])
 
             time.sleep(1)
     else:
