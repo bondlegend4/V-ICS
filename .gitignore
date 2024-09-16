@@ -16,6 +16,8 @@ tomcat_log
 bin
 include
 lib
+env
 pyvenv.cfg
+__pycache__
 
 build
