@@ -1,45 +1,152 @@
-# Virtual-Industrial_Control_System
-A Kubernetes container is a virtual industrial control system.
+# Virtual-Industrial_Control_System (V-ICS)
 
-It can be configured to represent a municipal water system based on the Flint, Michigan, municipal water system.
+A Docker-based virtual industrial control system for simulating a municipal water system (inspired by the Flint, Michigan municipal water infrastructure).
 
-Code released under [the MIT license](https://github.com/bondlegend4/V-ICS/blob/main/LICENSE).
-
-
-![GitHub release (latest by date)]()
-
-[![Build Status]()
-![GitHub all releases]()
-[![]()]( "Get your own version badge on microbadger.com")
-[![]()]( "Get your own image badge on microbadger.com")
----
-
-<h1><img src=https://github.githubassets.com/images/modules/logos_page/GitHub-Logo.png height="20px" /> Project Documentation</a></h1> 
-See our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) page to take the first steps inside V-ICS project. 
-More about the project.
-
-Follow the [Release Section]() to be up to date with the latest features and see the specific version changelogs.   
-We follow the [Semantic Versioning Guidelines](http://semver.org/) to organize changes in our application.
-
-If you need support for deployment please contact us and find more information on [our website]()
-
-## Issues and ideas
-Have you found a bug? Do you have idea for a new feature? Open a new [Issue](https://github.com/bondlegend4/V-ICS/issues) on our GitHub project site!
-Please follow the [issue guidelines]()
-and make sure that your issue is not already reported. Try to write in english and explain what you think in a clear and understandable way.
-
-Special templates [to be written] have been prepared: 
-- "Bug report" - detailed bug report (including a scenario that allows you to repeat the error);
-- "Feature" - new feature, or an extension of the old ones;
-- "Feature request" - proposal for a new feature, or an extension of the old one;
-- "Report a security vulnerability" - application security vulnerability reports;
-
-We recommend using them;
+**Code released under** [MIT license](https://github.com/bondlegend4/V-ICS/blob/main/LICENSE).
 
 ---
 
-# Development
-To understand the relationship between https://helm.sh/docs/intro/using_helm/#creating-your-own-charts
+## Table of Contents
 
-## Building the application
-To build the application on your own environment you can use Kubeclt. If you want to start the development of V-ICS find quick-start tutorial on our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) page.
+- [Overview](#overview)  
+- [Quick Start with Docker Compose](#quick-start-with-docker-compose)  
+- [Usage](#usage)  
+- [Troubleshooting & Restarting](#troubleshooting--restarting)  
+- [Issues and Ideas](#issues-and-ideas)  
+- [Development](#development)  
+- [License](#license)
+
+---
+
+## Overview
+
+V-ICS is designed to emulate typical components of a modern industrial control system. This project includes containers for:
+
+1. [**OpenPLC**](http://localhost:8082/login) – For programmable logic controller logic.  
+2. [**SCADA-LTS**](http://localhost:8080/Scada-LTS/login.htm#/watch-list) – For supervisory control and data acquisition tasks.
+3. **Godot HTML** - Your browser visualizing a Mar's Colony getting cyberattacked.
+4. [**Godot Bridge**](http://localhost:5001/status) – A bridging service connecting a Godot-based visualization/game to the PLC.  
+5. **Simulation Containers** – Generates sensor data (e.g., water flow, pressure, etc.).
+
+You can customize each container and scenario to explore ICS security concepts, train staff, or test new control strategies.
+
+---
+
+## Quick Start with Docker Compose
+
+1. **Install Docker**  
+   - [Install Docker Desktop](https://www.docker.com/products/docker-desktop) if on Windows or macOS.  
+   - On Linux, install the [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose Plugin](https://docs.docker.com/compose/install/).
+
+2. **Clone the Repository**  
+   ```bash
+   git clone https://github.com/bondlegend4/V-ICS.git
+   cd V-ICS
+   ```
+
+3. **Configure Environment (Optional)**  
+   - Edit any relevant environment variables in `docker-compose.yml` or `.env` if you have one.  
+   - Review or modify the bridging container settings, e.g. `MODBUS_HOST`, `MODBUS_PORT`, etc.
+
+4. **Build & Start**  
+   ```bash
+   docker compose up -d --build
+   ```
+   - The `-d` flag runs containers in the background (detached).  
+   - The `--build` flag rebuilds images if Dockerfiles or dependencies changed.  
+
+---
+
+## Usage
+
+1. **OpenPLC**  
+   - Use the OpenPLC web interface to load a PLC program simulating a water system.  
+   - Deploy the logic to the runtime and confirm it is running.
+   - Check the logs to figure out where everything went wrong. 
+
+2. **SCADA-LTS**  
+   - Connect to SCADA-LTS, configure dashboards or tags, and link it to the PLC for monitoring.
+
+3. **Simulation Containers**
+   - The enviroment simulation container generate sensor data (soil moisture, temperature, etc.) and write them to the PLC registers.
+
+4. **Godot Visualization**   
+   - The bridging container ensures real-time data from the PLC or simulation is reflected in this game.
+
+---
+
+## Troubleshooting & Restarting
+
+1. **View Logs**  
+   ```bash
+   docker compose logs -f
+   ```
+   - Follow logs for all containers.  
+   - Add a service name (e.g. `docker compose logs -f openplc`) to target one container.
+
+2. **Restart a Single Service**  
+   ```bash
+   docker compose restart <service_name>
+   ```
+   - For instance, `docker compose restart python_bridge`.
+
+3. **Full Restart**  
+   ```bash
+   docker compose down
+   docker compose up -d --build
+   ```
+   - This stops all containers and rebuilds/runs them cleanly.
+
+4. **Port Conflicts**  
+   - If you see “address already in use,” change the host port mappings in `docker-compose.yml` or stop any conflicting services.
+
+5. **Connection Problems**  
+   - Check environment variables in `docker-compose.yml`.  
+   - Verify that the bridging and simulation containers reference `openplc` as the hostname if they need to connect by name over Docker’s internal network.  
+   - Verify the PLC program is running and that you’re writing/reading the correct Modbus registers in your ST code vs. the bridging code.
+
+---
+
+## Issues and Ideas
+
+Found a bug? Have an idea for a new feature? Please open a [new Issue](https://github.com/bondlegend4/V-ICS/issues) on our GitHub.
+
+We follow guidelines for:
+
+- **Bug reports**  
+- **Feature requests**  
+- **Security vulnerability reports**  
+
+When submitting, please describe your issue or proposal and provide enough details (screenshots, logs, steps to reproduce) so we can assist you effectively.
+
+---
+
+## Development
+
+If you plan to develop new features or extend the ICS:
+
+1. **Local Development**  
+   - Make changes in your local copy of the code (e.g., bridging code in `godot-bridge-openplc`, simulation logic in `simulations`, etc.).  
+   - Rebuild your containers using:
+     ```bash
+     docker compose up -d --build
+     ```
+2. **Tests**  
+   - If you have automated tests in `tests/`, run them locally with your Python environment or integrate them into a CI pipeline.  
+   - For container-level testing, you might stand up everything with Docker Compose and run end-to-end checks.
+
+3. **Documentation**  
+   - Check out our [GitHub Wiki](https://github.com/bondlegend4/V-ICS/wiki) for deeper setup instructions, architecture diagrams, or advanced usage scenarios.  
+   - Feel free to contribute by creating new wiki pages or updating existing ones.
+
+---
+
+## License
+
+This project is licensed under the terms of the [MIT license](https://github.com/bondlegend4/V-ICS/blob/main/LICENSE).  
+
+Feel free to use, modify, and distribute this software in personal and commercial projects under the terms of the MIT license. If you find it helpful, please consider contributing back your improvements or bug fixes.
+
+---
+
+Thank you for using **V-ICS**. If you have any questions or run into issues, please open an [Issue](https://github.com/bondlegend4/V-ICS/issues) or check our [Wiki](https://github.com/bondlegend4/V-ICS/wiki). Contributions and feedback are always welcome!

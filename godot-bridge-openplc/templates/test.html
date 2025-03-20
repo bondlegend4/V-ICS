@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>PLC Connection Test</title>
+  </head>
+  <body>
+    <h1>OpenPLC Connection Test</h1>
+    <button id="checkBtn">Check Connection</button>
+    <div id="results"></div>
+    <script>
+      const checkBtn = document.getElementById('checkBtn');
+      const resultsDiv = document.getElementById('results');
+
+      checkBtn.addEventListener('click', () => {
+        fetch('/api/health-check')
+          .then(response => response.json())
+          .then(data => {
+            if (data.ok) {
+              resultsDiv.innerHTML = `<p><strong>Success!</strong> Coil 0 value is: ${data.coil_value}</p>`;
+            } else {
+              resultsDiv.innerHTML = `<p><strong>Error:</strong> ${data.error}</p>`;
+            }
+          })
+          .catch(err => {
+            resultsDiv.innerHTML = `<p><strong>Fetch Error:</strong> ${err}</p>`;
+          });
+      });
+    </script>
+  </body>
+</html>
