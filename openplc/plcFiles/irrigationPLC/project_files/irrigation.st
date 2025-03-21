@@ -3,61 +3,71 @@ PROGRAM irrigation_ST
     SoilMoisture AT %IW0.0 : INT;
   END_VAR
   VAR
-    SoilMoistureMin : INT := 300;
-    SoilMoistureMax : INT := 800;
+    SoilMoistureMin : INT := 350;
+    SoilMoistureMax : INT := 600;
   END_VAR
   VAR
     Temperature AT %IW0.1 : INT;
   END_VAR
   VAR
-    TempMin : INT := 20;
-    TempMax : INT := 40;
+    TempMin : INT := 10;
+    TempMax : INT := 35;
   END_VAR
   VAR
     Humidity AT %IW0.2 : INT;
   END_VAR
   VAR
-    HumidityMin : INT := 50;
-    HumidityMin0 : INT := 90;
+    HumidityMin : INT := 40;
+    HumidityMax : INT := 80;
   END_VAR
   VAR
     WaterFlow AT %IW0.3 : INT;
   END_VAR
   VAR
-    FlowMin : INT := 500;
-    FlowMax : INT := 1000;
+    FlowMin : INT := 300;
+    FlowMax : INT := 800;
   END_VAR
   VAR
     Pressure AT %IW0.4 : INT;
   END_VAR
   VAR
-    PressureMin : INT := 50;
-    PressureMax : INT := 150;
+    PressureMin : INT := 60;
+    PressureMax : INT := 100;
+    PumpReady : BOOL := FALSE;
   END_VAR
   VAR
     PumpControl AT %QX0.0 : BOOL;
+  END_VAR
+  VAR
+    ValveReady : BOOL := FALSE;
+  END_VAR
+  VAR
     ValveControl AT %QX0.1 : BOOL;
   END_VAR
 
-  IF (SoilMoisture < SoilMoistureMax) THEN
-      IF (Temperature > TempMin) AND (Temperature < TempMax) THEN
-          IF (Pressure > PressureMin) AND (Pressure < PressureMax) THEN
-              IF (WaterFlow > FlowMin) AND (WaterFlow < FlowMax) THEN
-                  PumpControl := TRUE;
-                  ValveControl := TRUE;
-              ELSE
-                  PumpControl := FALSE;
-                  ValveControl := FALSE;
-              END_IF;
-          ELSE
-              PumpControl := FALSE;
-              ValveControl := FALSE;
-          END_IF;
-      ELSE
-          PumpControl := FALSE;
-          ValveControl := FALSE;
-      END_IF;
+  (* 1) Check if we need irrigation:
+        - Soil moisture < min
+        - Temperature between TempMin and TempMax
+        - Humidity between HumidityMin and HumidityMax
+     If we need irrigation, we begin the sequence:
+        - Open valve
+        - Wait for valve to be considered "open" (here simplified by a marker or short dwell)
+        - Turn on pump
+  *)
+
+  IF (SoilMoisture < SoilMoistureMin) 
+     AND (Temperature >= TempMin AND Temperature <= TempMax)
+     AND (Humidity >= HumidityMin AND Humidity <= HumidityMax) THEN
+        ValveControl := TRUE;
+        PumpControl := TRUE;
+
+
   ELSE
+     (*
+        If conditions are out of range or we have enough moisture:
+        - Turn off the pump (PumpReady = FALSE)
+        - Once the pump is confirmed off, close the valve
+     *)
       PumpControl := FALSE;
       ValveControl := FALSE;
   END_IF;
@@ -72,7 +82,7 @@ CONFIGURATION Config0
   END_RESOURCE
 END_CONFIGURATION
 
-(*DBG:char md5[] = "bf61d6f7e0f1bec1fb8d8ac3d512d365";*)
+(*DBG:char md5[] = "6f7d2d5943e834ba8aa9837ca2cacd6b";*)
 (*DBG:/**)
 (*DBG: * This file is part of OpenPLC Runtime*)
 (*DBG: **)
@@ -119,18 +129,20 @@ END_CONFIGURATION
 (*DBG:    {&(RES0__INSTANCE0.TEMPMAX), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.HUMIDITY), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.HUMIDITYMIN), INT_ENUM},*)
-(*DBG:    {&(RES0__INSTANCE0.HUMIDITYMIN0), INT_ENUM},*)
+(*DBG:    {&(RES0__INSTANCE0.HUMIDITYMAX), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.WATERFLOW), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.FLOWMIN), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.FLOWMAX), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.PRESSURE), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.PRESSUREMIN), INT_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.PRESSUREMAX), INT_ENUM},*)
+(*DBG:    {&(RES0__INSTANCE0.PUMPREADY), BOOL_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.PUMPCONTROL), BOOL_ENUM},*)
+(*DBG:    {&(RES0__INSTANCE0.VALVEREADY), BOOL_ENUM},*)
 (*DBG:    {&(RES0__INSTANCE0.VALVECONTROL), BOOL_ENUM},*)
 (*DBG:};*)
 (*DBG:*)
-(*DBG:#define VAR_COUNT               17*)
+(*DBG:#define VAR_COUNT               19*)
 (*DBG:*)
 (*DBG:uint16_t get_var_count(void)*)
 (*DBG:{*)
@@ -144,10 +156,10 @@ END_CONFIGURATION
 (*DBG:        return 0;*)
 (*DBG:    }*)
 (*DBG:    switch (debug_vars[idx].type) {*)
-(*DBG:    case BOOL_ENUM:*)
-(*DBG:        return sizeof(BOOL);*)
 (*DBG:    case INT_ENUM:*)
 (*DBG:        return sizeof(INT);*)
+(*DBG:    case BOOL_ENUM:*)
+(*DBG:        return sizeof(BOOL);*)
 (*DBG:    default:*)
 (*DBG:        return 0;*)
 (*DBG:    }*)
@@ -158,10 +170,10 @@ END_CONFIGURATION
 (*DBG:    void *ptr = debug_vars[idx].ptr;*)
 (*DBG:*)
 (*DBG:    switch (debug_vars[idx].type) {*)
-(*DBG:    case BOOL_ENUM:*)
-(*DBG:        return (void *)&((__IEC_BOOL_t *) ptr)->value;*)
 (*DBG:    case INT_ENUM:*)
 (*DBG:        return (void *)&((__IEC_INT_t *) ptr)->value;*)
+(*DBG:    case BOOL_ENUM:*)
+(*DBG:        return (void *)&((__IEC_BOOL_t *) ptr)->value;*)
 (*DBG:    default:*)
 (*DBG:        return 0;*)
 (*DBG:    }*)
@@ -174,16 +186,16 @@ END_CONFIGURATION
 (*DBG:    if (forced) {*)
 (*DBG:        size_t var_size = get_var_size(idx);*)
 (*DBG:        switch (debug_vars[idx].type) {*)
-(*DBG:        case BOOL_ENUM: {*)
-(*DBG:            memcpy(&((__IEC_BOOL_t *) ptr)->value, val, var_size);*)
-(*DBG:            //((__IEC_BOOL_t *) ptr)->value = *((BOOL *) val);*)
-(*DBG:            ((__IEC_BOOL_t *) ptr)->flags |= __IEC_FORCE_FLAG;*)
-(*DBG:            break;*)
-(*DBG:        }*)
 (*DBG:        case INT_ENUM: {*)
 (*DBG:            memcpy(&((__IEC_INT_t *) ptr)->value, val, var_size);*)
 (*DBG:            //((__IEC_INT_t *) ptr)->value = *((INT *) val);*)
 (*DBG:            ((__IEC_INT_t *) ptr)->flags |= __IEC_FORCE_FLAG;*)
+(*DBG:            break;*)
+(*DBG:        }*)
+(*DBG:        case BOOL_ENUM: {*)
+(*DBG:            memcpy(&((__IEC_BOOL_t *) ptr)->value, val, var_size);*)
+(*DBG:            //((__IEC_BOOL_t *) ptr)->value = *((BOOL *) val);*)
+(*DBG:            ((__IEC_BOOL_t *) ptr)->flags |= __IEC_FORCE_FLAG;*)
 (*DBG:            break;*)
 (*DBG:        }*)
 (*DBG:        default:*)
@@ -191,11 +203,11 @@ END_CONFIGURATION
 (*DBG:        }*)
 (*DBG:    } else {*)
 (*DBG:        switch (debug_vars[idx].type) {*)
-(*DBG:        case BOOL_ENUM:*)
-(*DBG:            ((__IEC_BOOL_t *) ptr)->flags &= ~__IEC_FORCE_FLAG;*)
-(*DBG:            break;*)
 (*DBG:        case INT_ENUM:*)
 (*DBG:            ((__IEC_INT_t *) ptr)->flags &= ~__IEC_FORCE_FLAG;*)
+(*DBG:            break;*)
+(*DBG:        case BOOL_ENUM:*)
+(*DBG:            ((__IEC_BOOL_t *) ptr)->flags &= ~__IEC_FORCE_FLAG;*)
 (*DBG:            break;*)
 (*DBG:        default:*)
 (*DBG:            break;*)

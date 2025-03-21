@@ -31,7 +31,7 @@ services:
             - "8080:8080"
         depends_on: 
             - database
-        expose: ["8080", "8000"]
+        expose: ["8080", "8000", "502"]
         volumes:
             - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
         links:

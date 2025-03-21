@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <project xmlns="http://www.plcopen.org/xml/tc6_0201" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:ns1="http://www.plcopen.org/xml/tc6_0201">
   <fileHeader companyName="Unknown" productName="Unnamed" productVersion="1" creationDateTime="2024-09-03T16:04:08"/>
-  <contentHeader name="Unnamed" modificationDateTime="2025-03-18T16:34:28">
+  <contentHeader name="Unnamed" modificationDateTime="2025-03-21T02:56:36">
     <coordinateInfo>
       <fbd>
         <scaling x="10" y="10"/>
@@ -35,10 +35,10 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="300"/>
+                <simpleValue value="350"/>
               </initialValue>
               <documentation>
-                <xhtml:p><![CDATA[Soil moisture upper bound]]></xhtml:p>
+                <xhtml:p><![CDATA[Soil moisture below this -> needs watering]]></xhtml:p>
               </documentation>
             </variable>
             <variable name="SoilMoistureMax">
@@ -46,10 +46,10 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="800"/>
+                <simpleValue value="600"/>
               </initialValue>
               <documentation>
-                <xhtml:p><![CDATA[Soil moisture lower bound]]></xhtml:p>
+                <xhtml:p><![CDATA[oil moisture above this -> well hydrated]]></xhtml:p>
               </documentation>
             </variable>
           </localVars>
@@ -69,7 +69,7 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="20"/>
+                <simpleValue value="10"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Temperature lower bound]]></xhtml:p>
@@ -80,7 +80,7 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="40"/>
+                <simpleValue value="35"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Temperature upper bound]]></xhtml:p>
@@ -103,18 +103,18 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="50"/>
+                <simpleValue value="40"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Humidity lower bound]]></xhtml:p>
               </documentation>
             </variable>
-            <variable name="HumidityMin0">
+            <variable name="HumidityMax">
               <type>
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="90"/>
+                <simpleValue value="80"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Humidity upper bound]]></xhtml:p>
@@ -137,7 +137,7 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="500"/>
+                <simpleValue value="300"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Water flow lower bound]]></xhtml:p>
@@ -148,7 +148,7 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="1000"/>
+                <simpleValue value="800"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Water flow upper bound]]></xhtml:p>
@@ -171,7 +171,7 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="50"/>
+                <simpleValue value="60"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Pressure lower bound]]></xhtml:p>
@@ -182,10 +182,21 @@
                 <INT/>
               </type>
               <initialValue>
-                <simpleValue value="150"/>
+                <simpleValue value="100"/>
               </initialValue>
               <documentation>
                 <xhtml:p><![CDATA[Pressure upper bound]]></xhtml:p>
+              </documentation>
+            </variable>
+            <variable name="PumpReady">
+              <type>
+                <BOOL/>
+              </type>
+              <initialValue>
+                <simpleValue value="FALSE"/>
+              </initialValue>
+              <documentation>
+                <xhtml:p><![CDATA[internal marker for valve open status]]></xhtml:p>
               </documentation>
             </variable>
           </localVars>
@@ -198,6 +209,21 @@
                 <xhtml:p><![CDATA[Output to control the pump ]]></xhtml:p>
               </documentation>
             </variable>
+          </localVars>
+          <localVars>
+            <variable name="ValveReady">
+              <type>
+                <BOOL/>
+              </type>
+              <initialValue>
+                <simpleValue value="FALSE"/>
+              </initialValue>
+              <documentation>
+                <xhtml:p><![CDATA[internal marker for pump on status]]></xhtml:p>
+              </documentation>
+            </variable>
+          </localVars>
+          <localVars>
             <variable name="ValveControl" address="%QX0.1">
               <type>
                 <BOOL/>
@@ -210,29 +236,32 @@
         </interface>
         <body>
           <ST>
-            <xhtml:p><![CDATA[IF (SoilMoisture < SoilMoistureMax) THEN
-    IF (Temperature > TempMin) AND (Temperature < TempMax) THEN
-        IF (Pressure > PressureMin) AND (Pressure < PressureMax) THEN
-            IF (WaterFlow > FlowMin) AND (WaterFlow < FlowMax) THEN
-                PumpControl := TRUE;
-                ValveControl := TRUE;
-            ELSE
-                PumpControl := FALSE;
-                ValveControl := FALSE;
-            END_IF;
-        ELSE
-            PumpControl := FALSE;
-            ValveControl := FALSE;
-        END_IF;
-    ELSE
-        PumpControl := FALSE;
-        ValveControl := FALSE;
-    END_IF;
+            <xhtml:p><![CDATA[(* 1) Check if we need irrigation:
+      - Soil moisture < min
+      - Temperature between TempMin and TempMax
+      - Humidity between HumidityMin and HumidityMax
+   If we need irrigation, we begin the sequence:
+      - Open valve
+      - Wait for valve to be considered "open" (here simplified by a marker or short dwell)
+      - Turn on pump
+*)
+
+IF (SoilMoisture < SoilMoistureMin) 
+   AND (Temperature >= TempMin AND Temperature <= TempMax)
+   AND (Humidity >= HumidityMin AND Humidity <= HumidityMax) THEN
+      ValveControl := TRUE;
+      PumpControl := TRUE;
+
+
 ELSE
+   (*
+      If conditions are out of range or we have enough moisture:
+      - Turn off the pump (PumpReady = FALSE)
+      - Once the pump is confirmed off, close the valve
+   *)
     PumpControl := FALSE;
     ValveControl := FALSE;
-END_IF;
-]]></xhtml:p>
+END_IF;]]></xhtml:p>
           </ST>
         </body>
       </pou>
