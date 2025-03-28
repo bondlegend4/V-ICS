@@ -1,59 +1,82 @@
-# Configuration
-NAMESPACE = v-ics
-SCADA_KUBE_DIR = ./scada-lts/kubernetes
-PLC_KUBE_DIR = ./openplc/kubernetes
+# Variables
+PYTHON = python3
+SIMULATION = modbus_simulation.py
+PLC_TEST = plc_test.py
+PLOT_TEST = modbus_traffic_plot.py
 
-# Kubernetes manifests
-DATABASE = $(SCADA_KUBE_DIR)/database.yaml
-DATABASE_CLAIM = $(SCADA_KUBE_DIR)/database-pvc.yaml
-DATABASE_CONFIG = $(SCADA_KUBE_DIR)/database-config.yaml
-DATABASE_SECRET = $(SCADA_KUBE_DIR)/database-secret.yaml
-SCADALTS = $(SCADA_KUBE_DIR)/scadalts.yaml
-SCADALTS_CLAIM = $(SCADA_KUBE_DIR)/scadalts-pvc.yaml
-OPENPLC_YAML = $(PLC_KUBE_DIR)/openplc.yaml
-COMBINED_YAML = ./scada-lts-development.yaml
+# Docker variables
+DOCKER_IMAGE = openplc:v3
+DOCKER_COMPOSE = docker-compose.yml  # Ensure you have a docker-compose.yml file set up with services openplc, database, scadalts
 
-# Helm charts
-SCADA_LTS_CHART = $(SCADA_KUBE_DIR)/Chart.yaml
-OPENPLC_CHART = $(PLC_KUBE_DIR)/Chart.yaml
+# Default rule to start the simulation and both tests
+all: setup_plc simulate test plot
 
-# Check for Helm and install if not found
-check-helm:
-	@if ! [ -x "$$(command -v helm)" ]; then \
-		echo "Helm not found. Installing..."; \
-		curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; \
-		export PATH=$$PATH:/usr/local/bin/helm; \
-		echo "Helm installed."; \
+# Rule to set up and run the OpenPLC Docker container
+setup_plc:
+	@echo "Setting up OpenPLC using Docker..."
+	# Check if the Docker image exists
+	@if [[ -z $$(docker images -q $(DOCKER_IMAGE)) ]]; then \
+		echo "Building OpenPLC Docker image..."; \
+		docker build -t $(DOCKER_IMAGE) .; \
+	fi
+	# Run the OpenPLC container (bind to port 8080)
+	@echo "Starting OpenPLC Docker container..."
+	@if ! docker ps --format '{{.Names}}' | grep -q openplc; then \
+		docker run -d --rm --privileged -p 8080:8080 $(DOCKER_IMAGE); \
 	else \
-		echo "Helm is already installed."; \
+		echo "OpenPLC container is already running."; \
 	fi
 
-.PHONY: all deploy-scada-lts deploy-openplc clean combine check-helm package-scada-lts-chart
+	# Start the necessary services via docker-compose
+	@echo "Starting necessary Docker services with docker-compose..."
+	@if ! docker ps --format '{{.Names}}' | grep -q openplc; then \
+		echo "Starting openplc service..."; \
+		docker compose up -d openplc; \
+	fi
 
-all: check-helm package-scada-lts-chart deploy-scada-lts deploy-openplc
+	@if ! docker ps --format '{{.Names}}' | grep -q database; then \
+		echo "Starting database service..."; \
+		docker compose up -d database; \
+	fi
 
-deploy-scada-lts: check-helm package-scada-lts-chart
-	@kubectl create namespace $(NAMESPACE) || true
-	@helm install scadalts $(SCADA_LTS_CHART) -n $(NAMESPACE)
+	@if ! docker ps --format '{{.Names}}' | grep -q scadalts; then \
+		echo "Starting scadalts service..."; \
+		docker compose up -d scadalts; \
+	fi
 
-deploy-openplc: check-helm
-	@echo "Deploying OpenPLC instances..."
-	@for i in $(shell seq 1 $(NUM_INSTANCES)); do \
-		instance_name="openplc-instance$$i"; \
-		values_file="$(PLC_KUBE_DIR)/openplc-values/instance$$i.yaml"; \
-		helm upgrade --install $$instance_name $(OPENPLC_CHART) -n $(NAMESPACE) -f $$values_file; \
-	done
+	@echo "OpenPLC setup complete."
 
-combine:
-	@echo "Combining YAML files into $(COMBINED_YAML)..."
-	@cat $(DATABASE_CLAIM) $(DATABASE_CONFIG) $(DATABASE_SECRET) $(DATABASE) $(SCADALTS_CLAIM) $(SCADALTS) > $(COMBINED_YAML)
-	@echo "OpenPLC instance configurations will need to be added manually to $(COMBINED_YAML)"
+# Rule to start the Modbus simulation
+simulate:
+	@echo "Starting the Modbus TCP simulation server..."
+	$(PYTHON) $(SIMULATION)
 
+# Rule to run the first test (PLC response test)
+test:
+	@echo "Running the PLC response test..."
+	$(PYTHON) $(PLC_TEST)
+
+# Rule to run the second test (Modbus traffic plotting)
+plot:
+	@echo "Running the Modbus traffic plotting test..."
+	$(PYTHON) $(PLOT_TEST)
+
+# Rule to clean up any Python-generated files
 clean:
-	@helm uninstall scadalts -n $(NAMESPACE) || true
-	@for i in $(shell seq 1 $(NUM_INSTANCES)); do \
-		instance_name="openplc-instance$$i"; \
-		helm uninstall $$instance_name -n $(NAMESPACE) || true; \
-	done
-	@kubectl delete namespace $(NAMESPACE) || true
-	@rm -f $(COMBINED_YAML)  # Remove the combined YAML file
+	@echo "Cleaning up..."
+	@find . -name "*.pyc" -exec rm -f {} \;
+	@find . -name "__pycache__" -exec rm -rf {} \;
+	@echo "Clean complete."
+
+# Help rule to display usage information
+help:
+	@echo "Makefile for Python Modbus Simulation and Tests"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all        - Run the setup, simulation, and both tests."
+	@echo "  setup_plc  - Set up and run the OpenPLC Docker container."
+	@echo "  simulate   - Start the Modbus simulation server."
+	@echo "  test       - Run the PLC response test."
+	@echo "  plot       - Run the Modbus traffic plotting test."
+	@echo "  clean      - Remove generated Python cache files."
+	@echo "  help       - Display this help message."

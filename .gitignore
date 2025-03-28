@@ -6,3 +6,18 @@ test
 
 # Ignore Helm ignore file (optional)
 .helmignore
+
+# Ignore the perminent scadalts files
+db_conf
+db_data
+tomcat_log
+
+#python 
+bin
+include
+lib
+env
+pyvenv.cfg
+__pycache__
+
+build

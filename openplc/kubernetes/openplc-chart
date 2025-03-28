@@ -1,6 +1,0 @@
-openplc-chart/
-├── Chart.yaml
-├── templates/
-│   ├── openplc-deployment.yaml
-│   └── openplc-service.yaml
-└── values.yaml

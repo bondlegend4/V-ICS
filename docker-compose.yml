@@ -1,0 +1,107 @@
+# Docker compose file to manage your deployed images.
+# Use MySQL server 8 and latest Scada-LTS local build.
+# Using attached webapps folder as developer you will be able to modify the static content from host os.
+# Attach shell to stop the tomcat instance and then you will be able to run in JPDA mode.
+networks:
+  ics:
+    driver: bridge
+services: 
+    database:
+        container_name: mysql
+        image: mysql/mysql-server:8.0.32
+        ports:
+            - "3306:3306"
+        environment: 
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_USER=root
+            - MYSQL_PASSWORD=root
+            - MYSQL_DATABASE=scadalts
+        expose: ["3306"]
+        volumes:
+            - ./scadalts/db_data:/var/lib/mysql:rw
+            - ./scadalts/db_conf:/etc/mysql:ro
+        command: --log_bin_trust_function_creators=1
+        networks:
+            - ics
+    scadalts:
+        image: scadalts/scadalts:latest
+        environment:
+            - CATALINA_OPTS=-Xmx2G -Xms2G
+        ports: 
+            - "8080:8080"
+        depends_on: 
+            - database
+        expose: ["8080", "8000", "502"]
+        volumes:
+            - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
+        links:
+            - database:database
+        command:
+            - /usr/bin/wait-for-it
+            - --host=database
+            - --port=3306
+            - --timeout=30
+            - --strict
+            - --
+            - /usr/local/tomcat/bin/catalina.sh
+            - run
+        networks:
+            - ics
+    mqtt:
+        image: hivemq/hivemq4:latest
+        ports:
+            - "8081:8080"
+            - "1883:1883"
+        expose: [ "8081", "1883" ]
+    openplc:
+        image: openplc:v3
+        depends_on:
+            - scadalts
+        ports:
+            - "502:502"
+            - "8082:8080"
+        command: -privileged
+        networks:
+            - ics
+
+    python_bridge:
+        build:
+            context: ./godot-bridge-openplc
+            dockerfile: Dockerfile
+        container_name: python_bridge
+        ports:
+            - "5001:5001"
+        volumes:
+            - ./simulations:/app/simulations
+        environment:
+            - MODBUS_HOST=openplc
+            - MODBUS_PORT=502
+        depends_on:
+            - openplc
+        networks:
+            - ics
+
+
+    simulation:
+        build:
+            context: ./simulations
+            dockerfile: Dockerfile
+        container_name: irrigation_simulation
+        environment:
+            - MODBUS_HOST=openplc  # The service name of openplc
+            - MODBUS_PORT=502
+        depends_on:
+            - openplc
+        networks:
+            - ics
+    # godot_game:
+    #     build:
+    #         context: .
+    #         dockerfile: Dockerfile
+    #     container_name: godot_game
+    #     ports:
+    #         - "8081:80"
+    #     depends_on:
+    #         - python_bridge
+    #     networks:
+    #         - ics
