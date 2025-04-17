@@ -1,3 +1,6 @@
 [submodule "openplc/OpenPLC_v3"]
 	path = openplc/OpenPLC_v3
 	url = https://github.com/thiagoralves/OpenPLC_v3.git
+[submodule "godot-bridge-openplc/ICSSIM"]
+	path = godot-bridge-openplc/ICSSIM
+	url = https://github.com/bondlegend0110/ICSSIM.git
