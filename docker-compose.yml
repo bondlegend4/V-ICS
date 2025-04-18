@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   control_net: # Network for SCADA, Bridge, PLC Management, Attacker (Purdue L2/3)
     driver: bridge
@@ -22,20 +20,21 @@ services:
   # --- Core Infrastructure ---
   database:
     image: mysql/mysql-server:8.0.32
-    container_name: vics-mysql-db
-    environment:
+    container_name: mysql
+    ports:
+        - "3306:3306"
+    environment: 
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
       - MYSQL_DATABASE=scadalts
-      - MYSQL_ROOT_HOST=% # Allow connections from any container in the network
+    expose: ["3306"]
     volumes:
       - ./scadalts/db_data:/var/lib/mysql:rw
-      - ./scadalts/db_conf:/etc/mysql/conf.d:ro # Mount custom MySQL configs if needed
+      - ./scadalts/db_conf:/etc/mysql:ro
+    command: --log_bin_trust_function_creators=1
     networks:
       - control_net
-    ports:
-      - "3306:3306" # Expose only if needed for direct host access
     healthcheck:
       test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
@@ -54,53 +53,58 @@ services:
       - "11211:11211" # Expose only if needed for direct host access
 
   mqtt:
-    image: hivemq/hivemq4:latest
-    container_name: vics-mqtt-broker
-    ports:
-        - "1883:1883"    # Standard MQTT port
-        - "8081:8080"    # HiveMQ Web UI (use different host port than ScadaLTS/OpenPLC)
-    networks:
-      - control_net # Assume SCADA/Bridge use MQTT on control network
+      image: hivemq/hivemq4:latest
+      ports:
+          - "8081:8080"
+          - "1883:1883"
+      expose: [ "8081", "1883" ]
 
   # --- ICS Components ---
   scadalts:
     image: scadalts/scadalts:latest # Make sure this image is available
     container_name: vics-scadalts-app
     environment:
-      - CATALINA_OPTS=-Xmx2G -Xms2G
-    ports:
-      - "8080:8080" # Scada-LTS Web UI
+        - CATALINA_OPTS=-Xmx2G -Xms2G
+    ports: 
+        - "8080:8080" # Scada-LTS Web UI
+    depends_on: 
+        - database
+    expose: ["8080", "8000", "502"]
     volumes:
-      - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
+        - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
+    links:
+        - database:database
+    command:
+        - /usr/bin/wait-for-it
+        - --host=database
+        - --port=3306
+        - --timeout=30
+        - --strict
+        - --
+        - /usr/local/tomcat/bin/catalina.sh
+        - run
     networks:
       - control_net
-    depends_on:
-      database:
-        condition: service_healthy # Wait for MySQL to be ready
-
   openplc:
-    image: openplc/openplc:v3 # Make sure this image is available
-    container_name: vics-openplc-runtime
-    privileged: true # Often needed for low-level network access
+    image: openplc:v3 # This image must be created locally
+    depends_on:
+        - scadalts
     ports:
-      - "8082:8080" # OpenPLC Web UI (use different host port)
-      - "502:502"   # Modbus TCP Port
+        - "502:502"
+        - "8082:8080"
     volumes:
-      # Mount your specific PLC program file(s)
-      # Note: Verify the correct internal path inside the OpenPLCv3 image
-      - ./openplc/plcFiles:/root/OpenPLC_v3/plcFiles:rw
-      # Persist runtime data if needed (e.g., retain values)
-      # - ./openplc/runtime_data:/usr/local/bin/OpenPLC_v3/runtime:rw
+    # Mount your specific PLC program file(s)
+    # Note: Verify the correct internal path inside the OpenPLCv3 image
+    - ./openplc/plcFiles:/root/OpenPLC_v3/plcFiles:ro
+    command: -privileged
     networks:
       - control_net # Accessible by Bridge/SCADA
       - field_net   # Logically operates at field level
-    depends_on:
-      - memcached # Not strictly necessary unless PLC talks to memcached (unlikely)
 
   # --- Simulation (using ICSSIM HIL concept) ---
   simulation:
     build:
-      context: ./simulation
+      context: ./simulations
       dockerfile: Dockerfile
     container_name: vics-irrigation-simulation
     privileged: true # Consistent with ICSSIM examples
@@ -112,7 +116,7 @@ services:
       # Add any other environment variables your simulation needs
     volumes:
       # Mount simulation code and ICSSIM base classes if needed at runtime
-      - ./simulation:/app:rw # Assuming your Dockerfile sets WORKDIR /app
+      - ./simulations:/app:rw # Assuming your Dockerfile sets WORKDIR /app
       - ./icssim_framework/src:/app/icssim_framework/src:ro
       - ./logs/simulation:/app/logs:rw # Optional: Mount logs directory
     networks:
@@ -121,9 +125,6 @@ services:
       - control_net
     depends_on:
       - memcached # Must wait for memcached to be up
-    # Assumes start_simulation.py is the entrypoint defined in Dockerfile or here
-    command: ["python", "start_simulation.py"]
-
   # --- Bridge/API Service ---
   bridge:
     build:
@@ -166,9 +167,9 @@ services:
     tty: true # Allow interactive terminal
     stdin_open: true # Keep stdin open
     volumes:
-      # Mount ICSSIM source as per its example (if attacker scripts need it)
+      # This volume mount makes the host's src directory available at /src INSIDE the running container
       - ./icssim_framework/src:/src:rw
-      - ./logs/attacker:/src/logs:rw # Optional: Mount logs
+      - ./logs/attacker:./src/logs:rw # Optional: Mount logs
     networks:
       # Should operate on the control network to target components
       - control_net
