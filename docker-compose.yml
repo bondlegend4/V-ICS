@@ -1,143 +1,185 @@
 version: "3.9"
 
-############################
-#  NETWORKS
-############################
 networks:
-  ics:   { driver: bridge }          # original project network
-  wnet:  # ICSSIM wired network
+  control_net: # Network for SCADA, Bridge, PLC Management, Attacker (Purdue L2/3)
     driver: bridge
-    ipam: { config: [ { subnet: 192.168.0.0/24, gateway: 192.168.0.1 } ] }
-    driver_opts: { com.docker.network.bridge.name: br_icsnet }
-  fnet:  # ICSSIM field network
+    ipam:
+      config:
+        - subnet: 192.168.10.0/24
+          gateway: 192.168.10.1
+    driver_opts:
+      com.docker.network.bridge.name: br_vics_control
+  field_net:   # Network for PLC control interface, Simulation (Purdue L0/1)
     driver: bridge
-    ipam: { config: [ { subnet: 192.168.1.0/24, gateway: 192.168.1.1 } ] }
-    driver_opts: { com.docker.network.bridge.name: br_phynet }
+    ipam:
+      config:
+        - subnet: 192.168.20.0/24
+          gateway: 192.168.20.1
+    driver_opts:
+      com.docker.network.bridge.name: br_vics_field
 
-############################
-#  ICSsVirtualForCiberSec SERVICES
-############################
 services:
+  # --- Core Infrastructure ---
   database:
-    container_name: mysql
     image: mysql/mysql-server:8.0.32
+    container_name: vics-mysql-db
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_USER=root
       - MYSQL_PASSWORD=root
       - MYSQL_DATABASE=scadalts
-    ports: ["3306:3306"]
+      - MYSQL_ROOT_HOST=% # Allow connections from any container in the network
     volumes:
       - ./scadalts/db_data:/var/lib/mysql:rw
-      - ./scadalts/db_conf:/etc/mysql:ro
-    command: --log_bin_trust_function_creators=1
-    networks: [ ics ]
+      - ./scadalts/db_conf:/etc/mysql/conf.d:ro # Mount custom MySQL configs if needed
+    networks:
+      - control_net
+    ports:
+      - "3306:3306" # Expose only if needed for direct host access
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  scadalts:
-    image: scadalts/scadalts:latest
-    environment: [ CATALINA_OPTS=-Xmx2G -Xms2G ]
-    ports: ["8080:8080"]
-    depends_on: [ database ]
-    volumes: [ ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw ]
-    command: [ "/usr/bin/wait-for-it", "--host=database", "--port=3306",
-               "--timeout=30", "--strict", "--",
-               "/usr/local/tomcat/bin/catalina.sh", "run" ]
-    networks: [ ics ]
+  memcached:
+    image: memcached:latest
+    container_name: vics-memcached-connector
+    command: -m 64 # Optional: limit memory usage
+    networks:
+      # Needs to be accessible by both simulation and bridge
+      - control_net
+      - field_net
+    ports:
+      - "11211:11211" # Expose only if needed for direct host access
 
   mqtt:
     image: hivemq/hivemq4:latest
-    ports: ["1883:1883", "8081:8080"]
-    networks: [ ics ]
+    container_name: vics-mqtt-broker
+    ports:
+        - "1883:1883"    # Standard MQTT port
+        - "8081:8080"    # HiveMQ Web UI (use different host port than ScadaLTS/OpenPLC)
+    networks:
+      - control_net # Assume SCADA/Bridge use MQTT on control network
+
+  # --- ICS Components ---
+  scadalts:
+    image: scadalts/scadalts:latest # Make sure this image is available
+    container_name: vics-scadalts-app
+    environment:
+      - CATALINA_OPTS=-Xmx2G -Xms2G
+    ports:
+      - "8080:8080" # Scada-LTS Web UI
+    volumes:
+      - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
+    networks:
+      - control_net
+    depends_on:
+      database:
+        condition: service_healthy # Wait for MySQL to be ready
 
   openplc:
-    image: openplc:v3
-    depends_on: [ scadalts ]
-    ports: ["502:502", "8082:8080"]
-    command: -privileged
-    networks: [ ics ]
+    image: openplc/openplc:v3 # Make sure this image is available
+    container_name: vics-openplc-runtime
+    privileged: true # Often needed for low-level network access
+    ports:
+      - "8082:8080" # OpenPLC Web UI (use different host port)
+      - "502:502"   # Modbus TCP Port
+    volumes:
+      # Mount your specific PLC program file(s)
+      # Note: Verify the correct internal path inside the OpenPLCv3 image
+      - ./openplc/plcFiles:/root/OpenPLC_v3/plcFiles:rw
+      # Persist runtime data if needed (e.g., retain values)
+      # - ./openplc/runtime_data:/usr/local/bin/OpenPLC_v3/runtime:rw
+    networks:
+      - control_net # Accessible by Bridge/SCADA
+      - field_net   # Logically operates at field level
+    depends_on:
+      - memcached # Not strictly necessary unless PLC talks to memcached (unlikely)
 
-  python_bridge:
-    build: { context: ./godot-bridge-openplc, dockerfile: Dockerfile }
-    container_name: python_bridge
-    ports: ["5001:5001"]
-    volumes: [ ./simulations:/app/simulations ]
-    environment: [ MODBUS_HOST=openplc, MODBUS_PORT=502 ]
-    depends_on: [ openplc ]
-    networks: [ ics ]
-
+  # --- Simulation (using ICSSIM HIL concept) ---
   simulation:
-    build: { context: ./simulations, dockerfile: Dockerfile }
-    container_name: irrigation_simulation
-    environment: [ MODBUS_HOST=openplc, MODBUS_PORT=502 ]
-    depends_on: [ openplc ]
-    networks: [ ics ]
-
-  godot_game:
     build:
-      context: ./godot_game
-      dockerfile: Dockerfile        # see earlier answer
-    container_name: godot_game
-    networks: [ ics ]
-
-############################
-# ICSSIM WRAPPER SERVICES
-############################
-
-  mars_physics:
-    build:
-      context: ./ics-wrapper
-      dockerfile: Dockerfile          # python:3.10‑slim, pip install ics_sim; copies mars_physics.py
-    entrypoint: ["python", "mars_physics.py"]
-    container_name: mars_physics
-    depends_on: [ plc_openplc ]
-    networks:
-      ics: {}
-      fnet: { ipv4_address: 192.168.1.32 }
-
-  plc_openplc:
-    build:
-      context: ./ics-wrapper
+      context: ./simulation
       dockerfile: Dockerfile
-    entrypoint: ["python", "plc_openplc.py"]
-    container_name: plc_openplc
-    depends_on: [ openplc ]
+    container_name: vics-irrigation-simulation
+    privileged: true # Consistent with ICSSIM examples
+    environment:
+      # Configure the connector for the simulation to use
+      - CONNECTOR_TYPE=memcache
+      - CONNECTOR_PATH=memcached:11211 # Service name:port
+      - CONNECTOR_NAME=sim_state        # Namespace/Key prefix for memcached
+      # Add any other environment variables your simulation needs
+    volumes:
+      # Mount simulation code and ICSSIM base classes if needed at runtime
+      - ./simulation:/app:rw # Assuming your Dockerfile sets WORKDIR /app
+      - ./icssim_framework/src:/app/icssim_framework/src:ro
+      - ./logs/simulation:/app/logs:rw # Optional: Mount logs directory
     networks:
-      ics: {}
-      wnet: { ipv4_address: 192.168.0.30 }
+      # Primarily on field_net, but needs control_net to reach memcached
+      - field_net
+      - control_net
+    depends_on:
+      - memcached # Must wait for memcached to be up
+    # Assumes start_simulation.py is the entrypoint defined in Dockerfile or here
+    command: ["python", "start_simulation.py"]
 
-  # Attackers
+  # --- Bridge/API Service ---
+  bridge:
+    build:
+      context: ./bridge
+      dockerfile: Dockerfile
+    container_name: vics-system-bridge
+    environment:
+      # Configure connector (must match simulation service)
+      - CONNECTOR_TYPE=memcache
+      - CONNECTOR_PATH=memcached:11211
+      - CONNECTOR_NAME=sim_state
+      # Configure Modbus connection to OpenPLC
+      - MODBUS_HOST=openplc # Use docker service name
+      - MODBUS_PORT=502
+      # Flask specific (optional)
+      - FLASK_APP=bridge.py
+      - FLASK_ENV=development
+    ports:
+      - "5001:5001" # Expose the Flask API/UI port
+    volumes:
+      # Mount bridge code and ICSSIM base classes if needed at runtime
+      - ./bridge:/app:rw # Assuming WORKDIR /app
+      - ./icssim_framework/src:/app/icssim_framework/src:ro
+      - ./logs/bridge:/app/logs:rw # Optional: Mount logs directory
+    networks:
+      # Needs to talk to OpenPLC, Memcached, SCADA (potentially), and be reachable from host/Godot
+      - control_net
+    depends_on:
+      - openplc     # Wait for PLC to be available for Modbus
+      - memcached   # Wait for connector backend
+      - simulation  # Wait for simulation to start initializing state
+
+  # --- Attacker Component (Example) ---
   attacker:
-    build: attacker-docker/.
-    stdin_open: true
-    tty: true
+    build:
+      context: ./icssim_framework/deployments/attacker-docker
+      dockerfile: Dockerfile
+    container_name: vics-attacker-node
     privileged: true
-    working_dir: /src
-    entrypoint: ["./start.sh", "Attacker.py"]
-    container_name: attacker
-    volumes: [ ../src:/src, /etc/timezone:/etc/timezone:ro, /etc/localtime:/etc/localtime:ro ]
+    tty: true # Allow interactive terminal
+    stdin_open: true # Keep stdin open
+    volumes:
+      # Mount ICSSIM source as per its example (if attacker scripts need it)
+      - ./icssim_framework/src:/src:rw
+      - ./logs/attacker:/src/logs:rw # Optional: Mount logs
     networks:
-      wnet: { ipv4_address: 192.168.0.42 }
+      # Should operate on the control network to target components
+      - control_net
+    depends_on:
+      - openplc
+      - bridge
+      - scadalts # Wait for potential targets
+    # Specify the default attacker script to run (adjust as needed)
+    entrypoint: ["./start.sh", "Attacker.py"] # Example entrypoint
 
-  attacker2:
-    build: attacker-docker/.
-    stdin_open: true
-    tty: true
-    privileged: true
-    working_dir: /src
-    entrypoint: ["./start.sh", "AttackerMachine.py"]
-    container_name: attackermachine
-    volumes: [ ../src:/src, /etc/timezone:/etc/timezone:ro, /etc/localtime:/etc/localtime:ro ]
-    networks:
-      wnet: { ipv4_address: 192.168.0.41 }
-
-  attackerremote:
-    build: attacker-docker/.
-    stdin_open: true
-    tty: true
-    privileged: true
-    working_dir: /src
-    entrypoint: ["./start.sh", "AttackerRemote.py"]
-    container_name: attackerremote
-    volumes: [ ../src:/src, /etc/timezone:/etc/timezone:ro, /etc/localtime:/etc/localtime:ro ]
-    networks:
-      wnet: { ipv4_address: 192.168.0.43 }
+# Define persistent volumes if not using bind mounts (optional)
+# volumes:
+#   db_data:
+#   tomcat_logs:
