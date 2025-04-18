@@ -50,6 +50,7 @@ You can customize each container and scenario to explore ICS security concepts, 
 
 4. **Build & Start**  
    ```bash
+   docker build -t openplc:v3 ./openplc/OpenPLC_v3
    docker compose up -d --build
    ```
    - The `-d` flag runs containers in the background (detached).  
