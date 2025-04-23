@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title | default('V-ICS Bridge') }}</title>
+    <link rel="stylesheet" href="{{ url_for('web.static', filename='css/style.css') }}">
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        nav { margin-bottom: 20px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+        nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+        nav a:hover { text-decoration: underline; }
+        .container { max-width: 1200px; margin: auto; }
+        footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #ccc; font-size: 0.8em; color: #666; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="container">
+        <nav>
+            <a href="{{ url_for('web.status_page') }}">Status</a>
+            <a href="{{ url_for('web.details_page') }}">Details</a>
+            <a href="{{ url_for('web.tests_page') }}">Tests</a>
+            <a href="{{ url_for('web.history_page') }}">History</a>
+        </nav>
+
+        <h1>{{ title | default('V-ICS Bridge') }}</h1>
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer>
+            V-ICS Bridge | Current Time: <span id="footer-time"></span>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('web.static', filename='js/app.js') }}"></script>
+    <script>
+        // Simple footer time update
+        function updateFooterTime() {
+            const timeEl = document.getElementById('footer-time');
+            if(timeEl) {
+                timeEl.textContent = new Date().toLocaleTimeString();
+            }
+        }
+        updateFooterTime();
+        setInterval(updateFooterTime, 1000);
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

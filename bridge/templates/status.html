@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .status-card { border: 1px solid #ccc; padding: 15px; border-radius: 5px; }
+    .status-card h3 { margin-top: 0; }
+    .status-indicator { width: 20px; height: 20px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
+    .status-indicator.green { background-color: #28a745; }
+    .status-indicator.yellow { background-color: #ffc107; }
+    .status-indicator.red { background-color: #dc3545; }
+    .status-indicator.grey { background-color: #adb5bd; } /* For unknown/initial state */
+    .error-message { color: #dc3545; font-size: 0.9em; margin-top: 5px; max-height: 100px; overflow-y: auto; }
+    #system-errors ul { list-style: none; padding: 0; max-height: 150px; overflow-y: auto;}
+    #system-errors li { margin-bottom: 5px; font-size: 0.85em; border-bottom: 1px dotted #eee; padding-bottom: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>System Component Status</h2>
+<p>Status updates automatically every {{ config.POLL_INTERVAL * 1000 }} ms (approx). Last updated: <span id="last-updated">Never</span></p>
+
+<div class="status-grid" id="status-grid">
+    <div class="status-card" data-component="openplc"><h3>OpenPLC (Modbus)</h3><p>Status: <span class="status-indicator grey"></span><span class="status-text">Loading...</span></p><div class="error-message"></div></div>
+    <div class="status-card" data-component="memcached"><h3>Simulation Connector (Memcached)</h3><p>Status: <span class="status-indicator grey"></span><span class="status-text">Loading...</span></p><div class="error-message"></div></div>
+    <div class="status-card" data-component="scadalts"><h3>Scada-LTS</h3><p>Status: <span class="status-indicator grey"></span><span class="status-text">Loading...</span></p><div class="error-message"></div></div>
+    <div class="status-card" data-component="mqtt"><h3>MQTT Broker</h3><p>Status: <span class="status-indicator grey"></span><span class="status-text">Loading...</span></p><div class="error-message"></div></div>
+    <div class="status-card" data-component="godot"><h3>Godot Client</h3><p>Status: <span class="status-indicator grey"></span><span class="status-text">Loading...</span></p><div class="error-message"></div></div>
+</div>
+
+<h2>Recent System Errors</h2>
+<div id="system-errors">
+    <p>Loading...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add specific JS for the status page in static/js/app.js
+    // It should fetch /api/system-state periodically and update the indicators/text
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initializeStatusPage === 'function') {
+            initializeStatusPage();
+        } else {
+            console.error("initializeStatusPage function not found in app.js");
+        }
+    });
+</script>
+{% endblock %}

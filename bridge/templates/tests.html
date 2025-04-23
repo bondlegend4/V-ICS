@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .scenario { border: 1px solid #ccc; margin-bottom: 15px; padding: 15px; border-radius: 5px; }
+    .scenario h4 { margin-top: 0; }
+    .scenario-status { font-weight: bold; }
+    .scenario-status.passed { color: #28a745; }
+    .scenario-status.failed { color: #dc3545; }
+    .scenario-status.running { color: #007bff; }
+    .scenario-status.waiting { color: #ffc107; } /* Waiting for visual */
+    .scenario-details { font-size: 0.9em; color: #555; margin-top: 10px; }
+    .scenario-details p { margin: 3px 0; }
+    .scenario-actions button { margin-right: 5px; cursor: pointer; padding: 5px 10px; }
+    .scenario-actions .visual-buttons { margin-top: 10px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Run System Tests</h2>
+
+<div id="test-scenarios-container">
+    {% if scenarios %}
+        {% for sid, scenario in scenarios.items() %}
+        <div class="scenario" id="scenario-{{ sid }}" data-scenario-id="{{ sid }}">
+            <h4>Scenario {{ sid }}: {{ scenario.name }}</h4>
+            <p><strong>Status:</strong> <span class="scenario-status status-text">Not Started</span></p>
+            <div class="scenario-details">
+                <p><em>Inputs:</em> <span class="inputs-text"></span></p>
+                <p><em>Expected Coils:</em> Pump={{ scenario.expected_pump }}, Valve={{ scenario.expected_valve }}</p>
+                <p><em>Result:</em> Coil Check: <span class="coil-check">N/A</span> | Visual Check: <span class="visual-check">N/A</span></p>
+                <p class="error-text" style="color: red;"></p>
+                <p class="details-text" style="font-family: monospace; font-size: 0.8em;"></p>
+            </div>
+            <div class="scenario-actions">
+                <button class="run-button">Run Test</button>
+                <div class="visual-buttons" style="display: none;">
+                    <button class="visual-pass-button">Visual Pass</button>
+                    <button class="visual-fail-button">Visual Fail</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No test scenarios defined.</p>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const initialTestResults = {{ results | tojson }};
+    const testScenarios = {{ scenarios | tojson }};
+</script>
+<script>
+    // Add specific JS for the tests page in static/js/app.js
+     document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initializeTestsPage === 'function') {
+            // Pass initial data to the JS function
+            initializeTestsPage(testScenarios, initialTestResults);
+        } else {
+             console.error("initializeTestsPage function not found in app.js");
+        }
+    });
+</script>
+{% endblock %}

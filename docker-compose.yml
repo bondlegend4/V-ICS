@@ -134,14 +134,16 @@ services:
     environment:
       # Configure connector (must match simulation service)
       - CONNECTOR_TYPE=memcache
-      - CONNECTOR_PATH=memcached:11211
+      - CONNECTOR_PATH=memcached:11211 # USE SERVICE NAME 'memcached'
       - CONNECTOR_NAME=sim_state
       # Configure Modbus connection to OpenPLC
-      - MODBUS_HOST=openplc # Use docker service name
+      - MODBUS_HOST=192.168.10.6           # USE SERVICE NAME 'openplc'
       - MODBUS_PORT=502
       # Flask specific (optional)
       - FLASK_APP=bridge.py
-      - FLASK_ENV=development
+      - FLASK_ENV=development       # Or production
+      - POLL_INTERVAL=2.0           # Example: Override config defaults if needed
+      - SYNC_INTERVAL=1.0
     ports:
       - "5001:5001" # Expose the Flask API/UI port
     volumes:
@@ -155,7 +157,6 @@ services:
     depends_on:
       - openplc     # Wait for PLC to be available for Modbus
       - memcached   # Wait for connector backend
-      - simulation  # Wait for simulation to start initializing state
 
   # --- Attacker Component (Example) ---
   attacker:
@@ -167,9 +168,8 @@ services:
     tty: true # Allow interactive terminal
     stdin_open: true # Keep stdin open
     volumes:
-      # This volume mount makes the host's src directory available at /src INSIDE the running container
       - ./icssim_framework/src:/src:rw
-      - ./logs/attacker:./src/logs:rw # Optional: Mount logs
+      - ./logs/attacker:/src/logs:rw
     networks:
       # Should operate on the control network to target components
       - control_net

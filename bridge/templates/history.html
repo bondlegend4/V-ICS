@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <script src="{{ url_for('web.static', filename='js/chart.js') }}"></script>
+    <style>
+        #history-controls { margin-bottom: 20px; }
+        #chart-container { max-width: 1000px; height: 400px; margin: auto; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<h2>Variable History</h2>
+
+<div id="history-controls">
+    <label for="tag-select">Select Tag:</label>
+    <select id="tag-select">
+        <option value="">-- Select Tag --</option>
+        </select>
+    <button id="load-history-btn">Load History</button>
+</div>
+
+<div id="chart-container">
+    <canvas id="history-chart"></canvas>
+</div>
+<p id="history-status"></p>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add specific JS for the history page in static/js/app.js
+     document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initializeHistoryPage === 'function') {
+            initializeHistoryPage();
+        } else {
+             console.error("initializeHistoryPage function not found in app.js");
+        }
+    });
+</script>
+{% endblock %}

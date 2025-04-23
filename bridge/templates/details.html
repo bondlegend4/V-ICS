@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+    .details-section { margin-bottom: 25px; }
+    .details-section h3 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .value-col { text-align: right; }
+    .tag-col { font-family: monospace; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Detailed System Values</h2>
+<p>Values update automatically. Last updated: <span id="last-updated">Never</span></p>
+
+<div class="details-section" id="plc-details">
+    <h3>OpenPLC Values</h3>
+    <h4>Coils (%QX)</h4>
+    <table id="plc-coils-table">
+        <thead><tr><th>Address</th><th>Value</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    <h4>Input Registers (%IW)</h4>
+    <table id="plc-inputs-table">
+        <thead><tr><th>Address</th><th>Value</th></tr></thead>
+        <tbody></tbody>
+    </table>
+    </div>
+
+<div class="details-section" id="simulation-details">
+    <h3>Simulation State (from Memcached)</h3>
+    <table id="sim-state-table">
+         <thead><tr><th>Tag Name</th><th>Value</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add specific JS for the details page in static/js/app.js
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof initializeDetailsPage === 'function') {
+            initializeDetailsPage();
+        } else {
+             console.error("initializeDetailsPage function not found in app.js");
+        }
+    });
+</script>
+{% endblock %}

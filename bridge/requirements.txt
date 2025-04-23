@@ -1,0 +1,7 @@
+Flask>=2.0
+Flask-Cors>=3.0
+pyModbusTCP>=0.2 # Or pymodbus if you switch
+python-memcached>=1.5 # For Memcached connector
+requests>=2.20    # Optional: If connecting to ScadaLTS API
+paho-mqtt>=1.6    # Optional: If connecting to MQTT
+waitress>=2.1     # For production
