@@ -1,5 +1,5 @@
 networks:
-  control_net: # Network for SCADA, Bridge, PLC Management, Attacker (Purdue L2/3)
+  control_net: # Network for SCADA, Bridge, Attacker (Purdue L2/3)
     driver: bridge
     ipam:
       config:
@@ -7,12 +7,20 @@ networks:
           gateway: 192.168.10.1
     driver_opts:
       com.docker.network.bridge.name: br_vics_control
-  field_net:   # Network for PLC control interface, Simulation (Purdue L0/1)
+  ot_protected_net: # PLC Management
     driver: bridge
     ipam:
       config:
         - subnet: 192.168.20.0/24
           gateway: 192.168.20.1
+    driver_opts:
+      com.docker.network.bridge.name: br_vics_protected
+  field_net:   # Network for PLC control interface, Simulation (Purdue L0/1)
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.30.0/24
+          gateway: 192.168.30.1
     driver_opts:
       com.docker.network.bridge.name: br_vics_field
 
@@ -47,7 +55,6 @@ services:
     command: -m 64 # Optional: limit memory usage
     networks:
       # Needs to be accessible by both simulation and bridge
-      - control_net
       - field_net
     ports:
       - "11211:11211" # Expose only if needed for direct host access
@@ -98,7 +105,7 @@ services:
     - ./openplc/plcFiles:/root/OpenPLC_v3/plcFiles:ro
     command: -privileged
     networks:
-      - control_net # Accessible by Bridge/SCADA
+      - ot_protected_net # Accessible by Bridge/SCADA
       - field_net   # Logically operates at field level
 
   # --- Simulation (using ICSSIM HIL concept) ---
@@ -120,9 +127,8 @@ services:
       - ./icssim_framework/src:/app/icssim_framework/src:ro
       - ./logs/simulation:/app/logs:rw # Optional: Mount logs directory
     networks:
-      # Primarily on field_net, but needs control_net to reach memcached
+      # Primarily on field_net to reach memcached
       - field_net
-      - control_net
     depends_on:
       - memcached # Must wait for memcached to be up
   # --- Bridge/API Service ---
@@ -153,9 +159,8 @@ services:
       - ./logs/bridge:/app/logs:rw # Optional: Mount logs directory
     networks:
       # Needs to talk to OpenPLC, Memcached, SCADA (potentially), and be reachable from host/Godot
-      - control_net
+      - field_net
     depends_on:
-      - openplc     # Wait for PLC to be available for Modbus
       - memcached   # Wait for connector backend
 
   # --- Attacker Component (Example) ---
