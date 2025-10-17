@@ -1,82 +1,95 @@
 # Variables
-PYTHON = python3
-SIMULATION = modbus_simulation.py
-PLC_TEST = plc_test.py
-PLOT_TEST = modbus_traffic_plot.py
+DOCKER_COMPOSE = docker-compose.yml
 
-# Docker variables
-DOCKER_IMAGE = openplc:v3
-DOCKER_COMPOSE = docker-compose.yml  # Ensure you have a docker-compose.yml file set up with services openplc, database, scadalts
+# Default rule
+all: setup_all
 
-# Default rule to start the simulation and both tests
-all: setup_plc simulate test plot
+# Setup all services
+setup_all:
+	@echo "Starting all V-ICS services..."
+	docker compose up -d
 
-# Rule to set up and run the OpenPLC Docker container
+# Individual service controls
 setup_plc:
-	@echo "Setting up OpenPLC using Docker..."
-	# Check if the Docker image exists
-	@if [[ -z $$(docker images -q $(DOCKER_IMAGE)) ]]; then \
-		echo "Building OpenPLC Docker image..."; \
-		docker build -t $(DOCKER_IMAGE) .; \
-	fi
-	# Run the OpenPLC container (bind to port 8080)
-	@echo "Starting OpenPLC Docker container..."
-	@if ! docker ps --format '{{.Names}}' | grep -q openplc; then \
-		docker run -d --rm --privileged -p 8080:8080 $(DOCKER_IMAGE); \
-	else \
-		echo "OpenPLC container is already running."; \
-	fi
+	@echo "Starting OpenPLC..."
+	docker compose up -d openplc
 
-	# Start the necessary services via docker-compose
-	@echo "Starting necessary Docker services with docker-compose..."
-	@if ! docker ps --format '{{.Names}}' | grep -q openplc; then \
-		echo "Starting openplc service..."; \
-		docker compose up -d openplc; \
-	fi
+setup_scada:
+	@echo "Starting SCADA-LTS..."
+	docker compose up -d database scadalts
 
-	@if ! docker ps --format '{{.Names}}' | grep -q database; then \
-		echo "Starting database service..."; \
-		docker compose up -d database; \
-	fi
+setup_modbus:
+	@echo "Starting Modbus server..."
+	docker compose up -d modbus-server
 
-	@if ! docker ps --format '{{.Names}}' | grep -q scadalts; then \
-		echo "Starting scadalts service..."; \
-		docker compose up -d scadalts; \
-	fi
+# Build services
+build:
+	@echo "Building all services..."
+	docker compose build
 
-	@echo "OpenPLC setup complete."
+build_modbus:
+	@echo "Building Modbus server..."
+	docker compose build modbus-server
 
-# Rule to start the Modbus simulation
-simulate:
-	@echo "Starting the Modbus TCP simulation server..."
-	$(PYTHON) $(SIMULATION)
+# Test Modbus server
+test_modbus:
+	@echo "Testing Modbus server..."
+	cd modelica-rust-modbus-server && ./scripts/test_modbus.sh
 
-# Rule to run the first test (PLC response test)
-test:
-	@echo "Running the PLC response test..."
-	$(PYTHON) $(PLC_TEST)
+# Logs
+logs:
+	docker compose logs -f
 
-# Rule to run the second test (Modbus traffic plotting)
-plot:
-	@echo "Running the Modbus traffic plotting test..."
-	$(PYTHON) $(PLOT_TEST)
+logs_modbus:
+	docker compose logs -f modbus-server
 
-# Rule to clean up any Python-generated files
+logs_openplc:
+	docker compose logs -f openplc
+
+# Stop services
+stop:
+	@echo "Stopping all services..."
+	docker compose down
+
+stop_modbus:
+	docker compose stop modbus-server
+
+# Clean up
 clean:
-	@echo "Cleaning up..."
+	@echo "Cleaning up containers and volumes..."
+	docker compose down -v
 	@find . -name "*.pyc" -exec rm -f {} \;
 	@find . -name "__pycache__" -exec rm -rf {} \;
-	@echo "Clean complete."
 
-# Help rule to display usage information
+# Status
+status:
+	@echo "Service status:"
+	docker compose ps
+
+# Help
 help:
-	@echo "Makefile for Python Modbus Simulation and Tests"
+	@echo "V-ICS Makefile Commands"
 	@echo ""
-	@echo "Targets:"
-	@echo "  all        - Run the setup, simulation, and both tests."
-	@echo "  setup_plc  - Set up and run the OpenPLC Docker container."
-	@echo "  simulate   - Start the Modbus simulation server."
-	@echo "  test       - Run the PLC response test."
-	@echo "  plot       - Run the Modbus traffic plotting test."
-	@echo "  clean      - Remove generated Python cache files."
-	@echo "  help       - Display this help message."
+	@echo "Setup:"
+	@echo "  all          - Start all services"
+	@echo "  setup_plc    - Start OpenPLC only"
+	@echo "  setup_scada  - Start SCADA-LTS and database"
+	@echo "  setup_modbus - Start Modbus server only"
+	@echo ""
+	@echo "Build:"
+	@echo "  build        - Build all services"
+	@echo "  build_modbus - Build Modbus server"
+	@echo ""
+	@echo "Test:"
+	@echo "  test_modbus  - Test Modbus connectivity"
+	@echo ""
+	@echo "Logs:"
+	@echo "  logs         - View all logs"
+	@echo "  logs_modbus  - View Modbus server logs"
+	@echo "  logs_openplc - View OpenPLC logs"
+	@echo ""
+	@echo "Control:"
+	@echo "  stop         - Stop all services"
+	@echo "  stop_modbus  - Stop Modbus server"
+	@echo "  clean        - Remove all containers and volumes"
+	@echo "  status       - Show service status"

@@ -63,37 +63,19 @@ services:
         command: -privileged
         networks:
             - ics
-
-    python_bridge:
-        build:
-            context: ./godot-bridge-openplc
-            dockerfile: Dockerfile
-        container_name: python_bridge
+    modbus-server:
+        build: ./modelica-rust-modbus-server
+        container_name: modelica-modbus-server
         ports:
-            - "5001:5001"
+        - "5502:5502"
+        networks:
+        - ics
+        environment:
+        - RUST_LOG=info
         volumes:
-            - ./simulations:/app/simulations
-        environment:
-            - MODBUS_HOST=openplc
-            - MODBUS_PORT=502
-        depends_on:
-            - openplc
-        networks:
-            - ics
+        - ./modelica-rust-modbus-server/modbus_config.toml:/app/modbus_config.toml:ro
+        restart: unless-stopped
 
-
-    simulation:
-        build:
-            context: ./simulations
-            dockerfile: Dockerfile
-        container_name: irrigation_simulation
-        environment:
-            - MODBUS_HOST=openplc  # The service name of openplc
-            - MODBUS_PORT=502
-        depends_on:
-            - openplc
-        networks:
-            - ics
     # godot_game:
     #     build:
     #         context: .
@@ -102,6 +84,6 @@ services:
     #     ports:
     #         - "8081:80"
     #     depends_on:
-    #         - python_bridge
+    #         - modbus-server
     #     networks:
     #         - ics

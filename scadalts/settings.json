@@ -25,6 +25,23 @@
           "retries":2,
           "timeout":500,
           "updatePeriods":5
+       },
+       {
+         "xid":"DS_THERMAL",
+         "type":"MODBUS_IP",
+         "alarmLevels":{
+            "POINT_WRITE_EXCEPTION":"URGENT",
+            "DATA_SOURCE_EXCEPTION":"URGENT",
+            "POINT_READ_EXCEPTION":"URGENT"
+         },
+         "updatePeriodType":"SECONDS",
+         "transportType":"TCP_KEEP_ALIVE",
+         "contiguousBatches":false,
+         "enabled":true,
+         "host":"modbus-server",
+         "port":5502,
+         "name":"Modelica - Thermal",
+         "updatePeriods":1
        }
     ],
     "dataPoints":[
@@ -262,6 +279,20 @@
              "suffix":""
           },
           "tolerance":0.0
+       },
+       {
+         "xid":"DP_TEMP",
+         "dataSourceXid":"DS_THERMAL",
+         "name":"temperature",
+         "pointLocator":{
+            "range":"HOLDING_REGISTER",
+            "modbusDataType":"TWO_BYTE_INT_UNSIGNED",
+            "offset":40001,
+            "slaveId":1,
+            "multiplier":0.01
+         },
+         "loggingType":"ON_CHANGE",
+         "enabled":true
        }
     ]
  }
