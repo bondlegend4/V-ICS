@@ -5,77 +5,89 @@
 networks:
   ics:
     driver: bridge
-services: 
-    database:
-        container_name: mysql
-        image: mysql/mysql-server:8.0.32
-        ports:
-            - "3306:3306"
-        environment: 
-            - MYSQL_ROOT_PASSWORD=root
-            - MYSQL_USER=root
-            - MYSQL_PASSWORD=root
-            - MYSQL_DATABASE=scadalts
-        expose: ["3306"]
-        volumes:
-            - ./scadalts/db_data:/var/lib/mysql:rw
-            - ./scadalts/db_conf:/etc/mysql:ro
-        command: --log_bin_trust_function_creators=1
-        networks:
-            - ics
-    scadalts:
-        image: scadalts/scadalts:latest
-        environment:
-            - CATALINA_OPTS=-Xmx2G -Xms2G
-        ports: 
-            - "8080:8080"
-        depends_on: 
-            - database
-        expose: ["8080", "8000", "502"]
-        volumes:
-            - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
-        links:
-            - database:database
-        command:
-            - /usr/bin/wait-for-it
-            - --host=database
-            - --port=3306
-            - --timeout=30
-            - --strict
-            - --
-            - /usr/local/tomcat/bin/catalina.sh
-            - run
-        networks:
-            - ics
-    mqtt:
-        image: hivemq/hivemq4:latest
-        ports:
-            - "8081:8080"
-            - "1883:1883"
-        expose: [ "8081", "1883" ]
-    openplc:
-        image: openplc:v3
-        depends_on:
-            - scadalts
-        ports:
-            - "502:502"
-            - "8082:8080"
-        command: -privileged
-        networks:
-            - ics
-    modbus-server:
-        build: ./modelica-rust-modbus-server
-        container_name: modelica-modbus-server
-        ports:
-        - "5502:5502"
-        networks:
-        - ics
-        environment:
-        - RUST_LOG=info
-        volumes:
-        - ./modelica-rust-modbus-server/modbus_config.toml:/app/modbus_config.toml:ro
-        restart: unless-stopped
 
+services: 
+  database:
+    container_name: mysql
+    image: mysql/mysql-server:8.0.32
+    ports:
+      - "3306:3306"
+    environment: 
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DATABASE=scadalts
+    expose: ["3306"]
+    volumes:
+      - ./scadalts/db_data:/var/lib/mysql:rw
+      - ./scadalts/db_conf:/etc/mysql:ro
+    command: --log_bin_trust_function_creators=1
+    networks:
+      - ics
+
+  scadalts:
+    image: scadalts/scadalts:latest
+    environment:
+      - CATALINA_OPTS=-Xmx2G -Xms2G
+    ports: 
+      - "8080:8080"
+    depends_on: 
+      - database
+    expose: ["8080", "8000", "502"]
+    volumes:
+      - ./scadalts/tomcat_log:/usr/local/tomcat/logs:rw
+    links:
+      - database:database
+    command:
+      - /usr/bin/wait-for-it
+      - --host=database
+      - --port=3306
+      - --timeout=30
+      - --strict
+      - --
+      - /usr/local/tomcat/bin/catalina.sh
+      - run
+    networks:
+      - ics
+
+  mqtt:
+    image: hivemq/hivemq4:latest
+    ports:
+      - "8081:8080"
+      - "1883:1883"
+    expose: ["8081", "1883"]
+    networks:
+      - ics
+
+  openplc:
+    image: openplc:v3
+    depends_on:
+      - scadalts
+      - modbus-server  # ADD THIS
+    ports:
+      - "502:502"
+      - "8082:8080"
+    command: -privileged
+    networks:
+      - ics
+
+  modbus-server:
+    build: ./modelica-rust-modbus-server
+    container_name: modelica-modbus-server
+    ports:
+      - "5502:5502"
+    networks:
+      - ics
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - ./modelica-rust-modbus-server/modbus_config.toml:/app/modbus_config.toml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "5502"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     # godot_game:
     #     build:
     #         context: .

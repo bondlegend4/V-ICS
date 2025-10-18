@@ -34,7 +34,7 @@ build_modbus:
 # Test Modbus server
 test_modbus:
 	@echo "Testing Modbus server..."
-	cd modelica-rust-modbus-server && ./scripts/test_modbus.sh
+	cd modelica-rust-modbus-server && cargo test --test modbus_client_test -- --nocapture
 
 # Logs
 logs:

@@ -1,0 +1,142 @@
+<?xml version='1.0' encoding='utf-8'?>
+<project xmlns="http://www.plcopen.org/xml/tc6_0201" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:ns1="http://www.plcopen.org/xml/tc6_0201">
+  <fileHeader companyName="Unknown" productName="Unnamed" productVersion="1" creationDateTime="2025-10-18T00:08:59"/>
+  <contentHeader name="Unnamed" modificationDateTime="2025-10-18T00:19:27">
+    <coordinateInfo>
+      <fbd>
+        <scaling x="10" y="10"/>
+      </fbd>
+      <ld>
+        <scaling x="10" y="10"/>
+      </ld>
+      <sfc>
+        <scaling x="10" y="10"/>
+      </sfc>
+    </coordinateInfo>
+  </contentHeader>
+  <types>
+    <dataTypes/>
+    <pous>
+      <pou name="turnHeatOn" pouType="program">
+        <interface>
+          <localVars>
+            <variable name="LocalVar0">
+              <type>
+                <DINT/>
+              </type>
+            </variable>
+          </localVars>
+        </interface>
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[PROGRAM HeaterOn
+VAR
+    heater AT %QX0.0 : BOOL;
+END_VAR
+
+heater := TRUE;
+
+END_PROGRAM]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
+      <pou name="thermalControl" pouType="program">
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[PROGRAM ThermalControl
+VAR
+    (* Inputs from Modbus server *)
+    temperature AT %IW100 : INT;        (* Temperature × 100 in Kelvin *)
+    heater_feedback AT %IW101 : INT;    (* Heater state: 0=OFF, 100=ON *)
+    
+    (* Output to Modbus server *)
+    heater_command AT %QX0.0 : BOOL;    (* Heater control coil *)
+    
+    (* Control parameters *)
+    setpoint : INT := 29315;             (* 293.15 K = 20°C *)
+    hysteresis : INT := 200;             (* ±2°C deadband *)
+    
+    (* Status variables for monitoring *)
+    temp_celsius : REAL;
+    temp_kelvin : REAL;
+    heater_is_on : BOOL;
+END_VAR
+
+(* Convert temperature to human-readable formats *)
+temp_kelvin := INT_TO_REAL(temperature) / 100.0;
+temp_celsius := temp_kelvin - 273.15;
+
+(* Check heater feedback status *)
+heater_is_on := (heater_feedback = 100);
+
+(* Simple bang-bang temperature control *)
+IF temperature < (setpoint - hysteresis) THEN
+    (* Too cold - turn heater ON *)
+    heater_command := TRUE;
+ELSIF temperature > (setpoint + hysteresis) THEN
+    (* Too hot - turn heater OFF *)
+    heater_command := FALSE;
+    (* ELSE: maintain current state (within deadband) *)
+END_IF;
+
+END_PROGRAM]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
+      <pou name="readTemp" pouType="program">
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[PROGRAM ReadTemp
+VAR
+    temp AT %IW100 : INT;
+    temp_displayed : INT;
+END_VAR
+
+temp_displayed := temp;
+
+END_PROGRAM]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
+      <pou name="minimalTest" pouType="program">
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[PROGRAM MinimalTest
+VAR
+    (* Just read temperature *)
+    temperature AT %IW100 : INT;
+    
+    (* Manual heater control - toggle every 5 seconds *)
+    heater_command AT %QX0.0 : BOOL;
+    
+    (* Timer *)
+    counter : INT := 0;
+END_VAR
+
+(* Increment counter every scan *)
+counter := counter + 1;
+
+(* Toggle heater every ~5000 scans (depends on scan time) *)
+IF counter > 5000 THEN
+    heater_command := NOT heater_command;
+    counter := 0;
+END_IF;
+
+END_PROGRAM]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
+    </pous>
+  </types>
+  <instances>
+    <configurations>
+      <configuration name="Config0">
+        <resource name="Res0">
+          <task name="task0" priority="0" interval="T#20ms">
+            <pouInstance name="instance0" typeName="turnHeatOn"/>
+          </task>
+        </resource>
+      </configuration>
+    </configurations>
+  </instances>
+</project>
