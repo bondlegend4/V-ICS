@@ -1,6 +1,9 @@
 [submodule "openplc/OpenPLC_v3"]
 	path = openplc/OpenPLC_v3
 	url = https://github.com/thiagoralves/OpenPLC_v3.git
-[submodule "modelica-rust-modbus-server"]
-	path = modelica-rust-modbus-server
-	url = https://github.com/bondlegend4/modelica-rust-modbus-server.git
+[submodule "godot-modelica-rust-integration"]
+	path = godot-modelica-rust-integration
+	url = https://github.com/bondlegend4/godot-modelica-rust-integration.git
+[submodule "space-modbus-server"]
+	path = space-modbus-server
+	url = https://github.com/bondlegend4/space-modbus-server
