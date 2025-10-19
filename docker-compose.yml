@@ -63,10 +63,10 @@ services:
     image: openplc:v3
     depends_on:
       - scadalts
-      - modbus-server  # ADD THIS
+      - modbus-server
     ports:
-      - "502:502"
       - "8082:8080"
+    expose: ["502"]
     command: -privileged
     networks:
       - ics
@@ -75,7 +75,7 @@ services:
     build: ./modelica-rust-modbus-server
     container_name: modelica-modbus-server
     ports:
-      - "5502:5502"
+      - "502:502"
     networks:
       - ics
     environment:
@@ -84,10 +84,11 @@ services:
       - ./modelica-rust-modbus-server/modbus_config.toml:/app/modbus_config.toml:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "5502"]
+      test: ["CMD", "nc", "-z", "localhost", "502"]
       interval: 10s
       timeout: 5s
       retries: 5
+  
     # godot_game:
     #     build:
     #         context: .

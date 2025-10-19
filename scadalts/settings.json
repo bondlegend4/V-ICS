@@ -13,7 +13,7 @@
          "contiguousBatches":false,
          "enabled":true,
          "host":"modbus-server",
-         "port":5502,
+         "port":502,
          "name":"Modelica - Thermal",
          "updatePeriods":1,
          "maxReadRegisterCount":125

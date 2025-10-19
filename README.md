@@ -44,7 +44,7 @@ Perfect for:
 └────────┬────────┘
          │ WebSocket/HTTP
 ┌────────▼────────┐
-│  Python Bridge  │ ← Game ↔ PLC connector
+│   Rust Bridge   │ ← Game ↔ PLC connector
 └────────┬────────┘
          │ Modbus TCP
 ┌────────▼────────┐     ┌──────────────────┐

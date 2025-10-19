@@ -81,6 +81,54 @@ END_IF;]]></xhtml:p>
           </ST>
         </body>
       </pou>
+      <pou name="heater_on_ST" pouType="program">
+        <interface>
+          <localVars>
+            <variable name="HeaterCommand" address="%QX0.0">
+              <type>
+                <BOOL/>
+              </type>
+              <documentation>
+                <xhtml:p><![CDATA[Output to control heater]]></xhtml:p>
+              </documentation>
+            </variable>
+          </localVars>
+        </interface>
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[HeaterCommand := TRUE;]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
+      <pou name="read_temp_ST" pouType="program">
+        <interface>
+          <localVars>
+            <variable name="Temperature" address="%IW100">
+              <type>
+                <INT/>
+              </type>
+              <documentation>
+                <xhtml:p><![CDATA[Temperature input from Modbus]]></xhtml:p>
+              </documentation>
+            </variable>
+          </localVars>
+          <localVars>
+            <variable name="TempDisplayed">
+              <type>
+                <INT/>
+              </type>
+              <documentation>
+                <xhtml:p><![CDATA[Copy for monitoring]]></xhtml:p>
+              </documentation>
+            </variable>
+          </localVars>
+        </interface>
+        <body>
+          <ST>
+            <xhtml:p><![CDATA[TempDisplayed := Temperature;]]></xhtml:p>
+          </ST>
+        </body>
+      </pou>
     </pous>
   </types>
   <instances>
