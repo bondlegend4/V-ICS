@@ -1,5 +1,5 @@
 # Ignore the 'test' file
-test
+tests
 
 # Ignore macOS-specific files
 .DS_Store
